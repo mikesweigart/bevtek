@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { EnrichButton } from "./EnrichButton";
 
 type Item = {
   id: string;
@@ -81,6 +82,8 @@ export default async function InventoryPage({
           Search
         </button>
       </form>
+
+      {total > 0 && <EnrichButton />}
 
       {total === 0 ? (
         <div className="rounded-lg border border-dashed border-[color:var(--color-border)] p-10 text-center">

@@ -8,6 +8,10 @@ import {
   mapRow,
   type InventoryRowInput,
 } from "@/lib/inventory/columnMap";
+import {
+  createWikipediaLookup,
+  extractBrandQuery,
+} from "@/lib/images/wikipedia";
 
 export type PreviewState = {
   error: string | null;
@@ -142,4 +146,79 @@ export async function commitImportAction(
 
   revalidatePath("/inventory");
   return { error: null, inserted };
+}
+
+// ---------------------------------------------------------------------------
+// Wikipedia image enrichment
+// ---------------------------------------------------------------------------
+
+export type EnrichState = {
+  error: string | null;
+  scanned: number | null;
+  updated: number | null;
+};
+
+const MAX_ITEMS_PER_RUN = 200; // keep a single request short
+const SLEEP_MS_BETWEEN_LOOKUPS = 100; // gentle on Wikipedia
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+export async function enrichImagesFromWikipediaAction(
+  _prev: EnrichState,
+): Promise<EnrichState> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return { error: "Not authenticated.", scanned: null, updated: null };
+  }
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("store_id, role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const p = profile as { store_id?: string; role?: string } | null;
+  if (!p?.store_id) {
+    return { error: "No store.", scanned: null, updated: null };
+  }
+  if (p.role !== "owner" && p.role !== "manager") {
+    return { error: "Only owners or managers can enrich.", scanned: null, updated: null };
+  }
+
+  // Pull items missing an image.
+  const { data: items } = (await supabase
+    .from("inventory")
+    .select("id, name, brand")
+    .eq("store_id", p.store_id)
+    .eq("is_active", true)
+    .is("image_url", null)
+    .limit(MAX_ITEMS_PER_RUN)) as {
+    data: { id: string; name: string; brand: string | null }[] | null;
+  };
+
+  if (!items || items.length === 0) {
+    return { error: null, scanned: 0, updated: 0 };
+  }
+
+  const lookup = createWikipediaLookup();
+  let updated = 0;
+
+  for (const item of items) {
+    const q = extractBrandQuery({ brand: item.brand, name: item.name });
+    if (!q) continue;
+    const hit = await lookup(q);
+    if (hit) {
+      const { error } = await supabase
+        .from("inventory")
+        .update({ image_url: hit.thumbnailUrl, image_source: "wikipedia" })
+        .eq("id", item.id);
+      if (!error) updated++;
+    }
+    await sleep(SLEEP_MS_BETWEEN_LOOKUPS);
+  }
+
+  revalidatePath("/inventory");
+  return { error: null, scanned: items.length, updated };
 }

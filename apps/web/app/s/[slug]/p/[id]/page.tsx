@@ -19,6 +19,7 @@ type Item = {
   description: string | null;
   tasting_notes: string | null;
   image_url: string | null;
+  image_source: string | null;
 };
 
 export default async function ProductPage({
@@ -40,7 +41,7 @@ export default async function ProductPage({
   const { data: item } = (await supabase
     .from("public_inventory")
     .select(
-      "id, store_id, sku, name, brand, category, subcategory, size_ml, abv, price, stock_qty, description, tasting_notes, image_url",
+      "id, store_id, sku, name, brand, category, subcategory, size_ml, abv, price, stock_qty, description, tasting_notes, image_url, image_source",
     )
     .eq("id", id)
     .eq("store_id", store.id)
@@ -61,12 +62,19 @@ export default async function ProductPage({
       </Link>
 
       <div className="grid md:grid-cols-[300px_1fr] gap-6 md:gap-8 items-start">
-        <ProductImage
-          src={item.image_url}
-          alt={item.name}
-          brand={item.brand}
-          size="lg"
-        />
+        <div className="space-y-2">
+          <ProductImage
+            src={item.image_url}
+            alt={item.name}
+            brand={item.brand}
+            size="lg"
+          />
+          {item.image_source === "wikipedia" && (
+            <p className="text-[10px] text-[color:var(--color-muted)] text-center">
+              Sample image · Wikipedia
+            </p>
+          )}
+        </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
