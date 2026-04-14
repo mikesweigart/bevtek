@@ -1,8 +1,14 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 
-type Store = { id: string; name: string; slug: string };
+type Store = {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+};
 
 export default async function ShopperLayout({
   children,
@@ -16,7 +22,7 @@ export default async function ShopperLayout({
 
   const { data: store } = (await supabase
     .from("public_stores")
-    .select("id, name, slug")
+    .select("id, name, slug, logo_url")
     .eq("slug", slug)
     .maybeSingle()) as { data: Store | null };
 
@@ -28,9 +34,23 @@ export default async function ShopperLayout({
         <div className="mx-auto max-w-5xl px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link
             href={`/s/${store.slug}`}
-            className="text-base sm:text-lg font-semibold tracking-tight"
+            className="flex items-center gap-3"
           >
-            {store.name}
+            {store.logo_url ? (
+              <div className="relative w-10 h-10 rounded overflow-hidden bg-zinc-50">
+                <Image
+                  src={store.logo_url}
+                  alt={`${store.name} logo`}
+                  fill
+                  sizes="40px"
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+            ) : null}
+            <span className="text-base sm:text-lg font-semibold tracking-tight">
+              {store.name}
+            </span>
           </Link>
           <span className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
             BevTek

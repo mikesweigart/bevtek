@@ -42,9 +42,12 @@ export default async function AppLayout({
             </span>
           </div>
           <div className="flex items-center gap-5 text-sm">
-            <span className="text-[color:var(--color-muted)]">
+            <Link
+              href="/settings"
+              className="text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
+            >
               {profile.full_name ?? profile.email}
-            </span>
+            </Link>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
