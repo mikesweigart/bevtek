@@ -74,6 +74,11 @@ export default async function ProductPage({
               Sample image · Wikipedia
             </p>
           )}
+          {item.image_source === "openfoodfacts" && (
+            <p className="text-[10px] text-[color:var(--color-muted)] text-center">
+              Image · Open Food Facts
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">

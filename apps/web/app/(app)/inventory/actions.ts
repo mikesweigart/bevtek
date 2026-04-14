@@ -12,6 +12,10 @@ import {
   createWikipediaLookup,
   extractBrandQuery,
 } from "@/lib/images/wikipedia";
+import {
+  lookupOpenFoodFacts,
+  isLikelyBarcode,
+} from "@/lib/images/openFoodFacts";
 
 export type PreviewState = {
   error: string | null;
@@ -156,22 +160,23 @@ export type EnrichState = {
   error: string | null;
   scanned: number | null;
   updated: number | null;
+  bySource: { openfoodfacts: number; wikipedia: number } | null;
 };
 
-const MAX_ITEMS_PER_RUN = 200; // keep a single request short
-const SLEEP_MS_BETWEEN_LOOKUPS = 100; // gentle on Wikipedia
+const MAX_ITEMS_PER_RUN = 200;
+const SLEEP_MS_BETWEEN_LOOKUPS = 100;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export async function enrichImagesFromWikipediaAction(
+export async function enrichImagesAction(
   _prev: EnrichState,
 ): Promise<EnrichState> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) {
-    return { error: "Not authenticated.", scanned: null, updated: null };
+    return { error: "Not authenticated.", scanned: null, updated: null, bySource: null };
   }
 
   const { data: profile } = await supabase
@@ -181,44 +186,86 @@ export async function enrichImagesFromWikipediaAction(
     .maybeSingle();
   const p = profile as { store_id?: string; role?: string } | null;
   if (!p?.store_id) {
-    return { error: "No store.", scanned: null, updated: null };
+    return { error: "No store.", scanned: null, updated: null, bySource: null };
   }
   if (p.role !== "owner" && p.role !== "manager") {
-    return { error: "Only owners or managers can enrich.", scanned: null, updated: null };
+    return {
+      error: "Only owners or managers can enrich.",
+      scanned: null,
+      updated: null,
+      bySource: null,
+    };
   }
 
-  // Pull items missing an image.
+  // Pull items missing an image. SKU included so we can try barcode lookup.
   const { data: items } = (await supabase
     .from("inventory")
-    .select("id, name, brand")
+    .select("id, name, brand, sku")
     .eq("store_id", p.store_id)
     .eq("is_active", true)
     .is("image_url", null)
     .limit(MAX_ITEMS_PER_RUN)) as {
-    data: { id: string; name: string; brand: string | null }[] | null;
+    data:
+      | { id: string; name: string; brand: string | null; sku: string | null }[]
+      | null;
   };
 
   if (!items || items.length === 0) {
-    return { error: null, scanned: 0, updated: 0 };
+    return {
+      error: null,
+      scanned: 0,
+      updated: 0,
+      bySource: { openfoodfacts: 0, wikipedia: 0 },
+    };
   }
 
-  const lookup = createWikipediaLookup();
-  let updated = 0;
+  const wikipediaLookup = createWikipediaLookup();
+  const counters = { openfoodfacts: 0, wikipedia: 0 };
 
   for (const item of items) {
-    const q = extractBrandQuery({ brand: item.brand, name: item.name });
-    if (!q) continue;
-    const hit = await lookup(q);
-    if (hit) {
+    let imageUrl: string | null = null;
+    let source: "openfoodfacts" | "wikipedia" | null = null;
+
+    // Tier 1: exact SKU lookup via Open Food Facts (if SKU looks like a barcode).
+    if (isLikelyBarcode(item.sku)) {
+      const off = await lookupOpenFoodFacts(item.sku!);
+      if (off) {
+        imageUrl = off.imageUrl;
+        source = "openfoodfacts";
+      }
+      await sleep(SLEEP_MS_BETWEEN_LOOKUPS);
+    }
+
+    // Tier 2: brand-level image via Wikipedia.
+    if (!imageUrl) {
+      const q = extractBrandQuery({ brand: item.brand, name: item.name });
+      if (q) {
+        const wiki = await wikipediaLookup(q);
+        if (wiki) {
+          imageUrl = wiki.thumbnailUrl;
+          source = "wikipedia";
+        }
+      }
+      await sleep(SLEEP_MS_BETWEEN_LOOKUPS);
+    }
+
+    if (imageUrl && source) {
       const { error } = await supabase
         .from("inventory")
-        .update({ image_url: hit.thumbnailUrl, image_source: "wikipedia" })
+        .update({ image_url: imageUrl, image_source: source })
         .eq("id", item.id);
-      if (!error) updated++;
+      if (!error) counters[source]++;
     }
-    await sleep(SLEEP_MS_BETWEEN_LOOKUPS);
   }
 
   revalidatePath("/inventory");
-  return { error: null, scanned: items.length, updated };
+  return {
+    error: null,
+    scanned: items.length,
+    updated: counters.openfoodfacts + counters.wikipedia,
+    bySource: counters,
+  };
 }
+
+// Keep the old name as an alias for the existing client import.
+export const enrichImagesFromWikipediaAction = enrichImagesAction;
