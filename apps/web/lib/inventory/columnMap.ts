@@ -10,6 +10,7 @@ export type InventoryRowInput = {
   cost: number | null;
   stock_qty: number;
   description: string | null;
+  image_url: string | null;
 };
 
 type FieldKey = keyof InventoryRowInput;
@@ -39,6 +40,15 @@ const SYNONYMS: Record<FieldKey, string[]> = {
     "on hand",
   ],
   description: ["description", "notes", "tasting notes"],
+  image_url: [
+    "image url",
+    "image_url",
+    "image",
+    "photo url",
+    "photo",
+    "picture",
+    "thumbnail",
+  ],
 };
 
 function normalize(h: string): string {
@@ -114,5 +124,16 @@ export function mapRow(
     description: mapping.description
       ? String(row[mapping.description] ?? "").trim() || null
       : null,
+    image_url: mapping.image_url
+      ? normalizeImageUrl(String(row[mapping.image_url] ?? "").trim())
+      : null,
   };
+}
+
+function normalizeImageUrl(v: string): string | null {
+  if (!v) return null;
+  // Accept http(s) and protocol-relative URLs only.
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^\/\//.test(v)) return `https:${v}`;
+  return null;
 }

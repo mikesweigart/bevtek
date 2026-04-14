@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 const features = [
@@ -23,8 +24,8 @@ const features = [
   {
     name: "Megan Shopper",
     desc: "Customer-facing web app.",
-    href: null,
-    live: false,
+    href: "shopper", // special-cased below; we link to the public URL
+    live: true,
   },
   {
     name: "Megan Texting",
@@ -40,21 +41,33 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("full_name, email, role")
+    .select("full_name, email, role, store_id")
     .eq("id", auth.user!.id)
     .single();
 
-  const p = profile as { full_name: string | null; email: string; role: string };
+  const p = profile as {
+    full_name: string | null;
+    email: string;
+    role: string;
+    store_id: string;
+  };
 
   // Parallel counts for at-a-glance stats.
-  const [inventory, modules, team] = await Promise.all([
+  const [inventory, modules, team, storeRes] = await Promise.all([
     supabase.from("inventory").select("*", { count: "exact", head: true }),
     supabase
       .from("modules")
       .select("*", { count: "exact", head: true })
       .eq("is_published", true),
     supabase.from("users").select("*", { count: "exact", head: true }),
+    supabase.from("stores").select("slug").eq("id", p.store_id).maybeSingle(),
   ]);
+
+  const storeSlug = (storeRes.data as { slug?: string } | null)?.slug ?? null;
+  const hdrs = await headers();
+  const origin =
+    hdrs.get("origin") ?? `http://${hdrs.get("host") ?? "localhost:3000"}`;
+  const shopperUrl = storeSlug ? `${origin}/s/${storeSlug}` : null;
 
   const stats = [
     { label: "Inventory items", value: inventory.count ?? 0, href: "/inventory" },
@@ -95,6 +108,8 @@ export default async function DashboardPage() {
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => {
+            const isShopper = f.href === "shopper";
+            const href = isShopper ? shopperUrl : f.href;
             const inner = (
               <>
                 <div className="flex items-center gap-2 mb-1">
@@ -104,16 +119,35 @@ export default async function DashboardPage() {
                   <h3 className="text-sm font-semibold">{f.name}</h3>
                 </div>
                 <p className="text-sm text-[color:var(--color-muted)]">{f.desc}</p>
-                <p className="text-xs mt-3 text-[color:var(--color-muted)]">
-                  {f.live ? "Open →" : "Coming soon"}
-                </p>
+                {isShopper && shopperUrl ? (
+                  <p className="text-xs mt-3 font-mono text-[color:var(--color-gold)] truncate">
+                    {shopperUrl.replace(/^https?:\/\//, "")}
+                  </p>
+                ) : (
+                  <p className="text-xs mt-3 text-[color:var(--color-muted)]">
+                    {f.live ? "Open →" : "Coming soon"}
+                  </p>
+                )}
               </>
             );
             const cls =
               "rounded-lg border border-[color:var(--color-border)] p-5 block" +
               (f.live ? " hover:border-[color:var(--color-gold)] transition-colors" : "");
-            return f.href ? (
-              <Link key={f.name} href={f.href} className={cls}>
+            if (isShopper && href) {
+              return (
+                <a
+                  key={f.name}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cls}
+                >
+                  {inner}
+                </a>
+              );
+            }
+            return href ? (
+              <Link key={f.name} href={href} className={cls}>
                 {inner}
               </Link>
             ) : (

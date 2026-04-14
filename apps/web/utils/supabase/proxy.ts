@@ -11,6 +11,7 @@ function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/auth/")) return true; // confirm, signout
   if (pathname.startsWith("/invite/")) return true; // invite acceptance
+  if (pathname.startsWith("/s/")) return true; // Megan Shopper (customer-facing)
   return false;
 }
 
