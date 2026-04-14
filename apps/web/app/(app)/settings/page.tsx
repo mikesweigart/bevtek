@@ -22,17 +22,52 @@ export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
 
-  const { data: profile } = (await supabase
+  const { data: profileData, error: profileErr } = await supabase
     .from("users")
     .select("full_name, email, role, store_id")
     .eq("id", auth.user!.id)
-    .single()) as { data: Profile };
+    .maybeSingle();
 
-  const { data: store } = (await supabase
+  if (profileErr || !profileData) {
+    return <SchemaError what="profile" detail={profileErr?.message} />;
+  }
+  const profile = profileData as Profile;
+
+  // Try with logo_url first. If column doesn't exist (migration 6 not run),
+  // retry with just the base columns and surface a helpful pointer.
+  let store: Store | null = null;
+  let migrationHint: string | null = null;
+
+  const full = await supabase
     .from("stores")
     .select("name, slug, phone, timezone, logo_url")
     .eq("id", profile.store_id)
-    .single()) as { data: Store };
+    .maybeSingle();
+
+  if (full.error) {
+    // Fall back: retry without logo_url so the page still loads.
+    const fallback = await supabase
+      .from("stores")
+      .select("name, slug, phone, timezone")
+      .eq("id", profile.store_id)
+      .maybeSingle();
+    if (fallback.data) {
+      store = { ...(fallback.data as Omit<Store, "logo_url">), logo_url: null };
+      migrationHint =
+        "Run migration 6 (store_logo) in the Supabase SQL Editor to enable logo uploads.";
+    }
+  } else {
+    store = (full.data as Store | null) ?? null;
+  }
+
+  if (!store) {
+    return (
+      <SchemaError
+        what="store"
+        detail={full.error?.message ?? "Store record not found."}
+      />
+    );
+  }
 
   const hdrs = await headers();
   const origin =
@@ -45,6 +80,12 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       </div>
+
+      {migrationHint && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
+          {migrationHint}
+        </div>
+      )}
 
       <section className="space-y-4">
         <div>
@@ -74,6 +115,32 @@ export default async function SettingsPage() {
         </div>
         <ProfileForm initialValues={profile} />
       </section>
+    </div>
+  );
+}
+
+function SchemaError({
+  what,
+  detail,
+}: {
+  what: string;
+  detail?: string;
+}) {
+  return (
+    <div className="space-y-4 max-w-xl">
+      <h1 className="text-2xl font-semibold tracking-tight">
+        Couldn&apos;t load {what}
+      </h1>
+      <p className="text-sm text-[color:var(--color-muted)]">
+        The database query failed. This usually means a migration hasn&apos;t
+        been run yet. Check the Supabase dashboard, confirm migrations 3–7 have
+        been applied, and try again.
+      </p>
+      {detail && (
+        <pre className="rounded-md bg-zinc-50 border border-[color:var(--color-border)] p-3 text-xs whitespace-pre-wrap">
+          {detail}
+        </pre>
+      )}
     </div>
   );
 }
