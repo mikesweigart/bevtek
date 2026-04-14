@@ -8,11 +8,12 @@ export default async function NewItemPage() {
   const { data: auth } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, store_id")
     .eq("id", auth.user!.id)
     .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "owner" && role !== "manager") redirect("/inventory");
+  const p = profile as { role?: string; store_id?: string } | null;
+  if (p?.role !== "owner" && p?.role !== "manager") redirect("/inventory");
+  const storeId = p.store_id!;
 
   return (
     <div className="space-y-6">
@@ -28,7 +29,7 @@ export default async function NewItemPage() {
           Add a product to your catalog.
         </p>
       </div>
-      <ItemForm />
+      <ItemForm storeId={storeId} />
     </div>
   );
 }

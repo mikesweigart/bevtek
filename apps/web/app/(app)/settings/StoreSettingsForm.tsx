@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Image from "next/image";
 import {
   updateStoreSettingsAction,
   type SettingsState,
 } from "./actions";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const initial: SettingsState = { error: null, saved: false };
 
@@ -14,6 +14,7 @@ const inputCls =
 
 export function StoreSettingsForm({
   initialValues,
+  storeId,
   shopperUrl,
   canEdit,
 }: {
@@ -24,6 +25,7 @@ export function StoreSettingsForm({
     timezone: string;
     logo_url: string | null;
   };
+  storeId: string;
   shopperUrl: string | null;
   canEdit: boolean;
 }) {
@@ -31,43 +33,22 @@ export function StoreSettingsForm({
     updateStoreSettingsAction,
     initial,
   );
-  const [logoUrl, setLogoUrl] = useState(initialValues.logo_url ?? "");
-  const previewUrl = /^https?:\/\//.test(logoUrl) ? logoUrl : null;
+  const [logoUrl, setLogoUrl] = useState<string | null>(
+    initialValues.logo_url ?? null,
+  );
 
   return (
-    <form action={action} className="space-y-5">
-      <div className="grid md:grid-cols-[auto_1fr] gap-5 items-start">
-        <div className="w-28 h-28 rounded-lg border border-[color:var(--color-border)] bg-zinc-50 flex items-center justify-center overflow-hidden relative">
-          {previewUrl ? (
-            <Image
-              src={previewUrl}
-              alt="Logo preview"
-              fill
-              sizes="112px"
-              className="object-contain"
-              unoptimized
-            />
-          ) : (
-            <span className="text-xs text-[color:var(--color-muted)]">
-              No logo
-            </span>
-          )}
-        </div>
-        <label className="flex-1 block space-y-1.5">
-          <span className="text-sm font-medium">Logo URL</span>
-          <input
-            name="logo_url"
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-            disabled={!canEdit}
-            placeholder="https://…"
-            className={inputCls}
-          />
-          <span className="text-[10px] text-[color:var(--color-muted)]">
-            Shown on your customer-facing storefront. A square PNG works best.
-          </span>
-        </label>
-      </div>
+    <form action={action} className="space-y-6">
+      <input type="hidden" name="logo_url" value={logoUrl ?? ""} />
+
+      <ImageUpload
+        label="Store logo"
+        storeId={storeId}
+        pathPrefix="logos"
+        value={logoUrl}
+        onChange={setLogoUrl}
+        size="md"
+      />
 
       <label className="block space-y-1.5">
         <span className="text-sm font-medium">Store name</span>
@@ -140,9 +121,7 @@ export function StoreSettingsForm({
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.saved && (
-        <p className="text-sm text-green-700">Saved.</p>
-      )}
+      {state.saved && <p className="text-sm text-green-700">Saved.</p>}
 
       {canEdit && (
         <button

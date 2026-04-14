@@ -57,6 +57,7 @@ export default async function SettingsPage() {
         </div>
         <StoreSettingsForm
           initialValues={store}
+          storeId={profile.store_id}
           shopperUrl={shopperUrl}
           canEdit={canEditStore}
         />

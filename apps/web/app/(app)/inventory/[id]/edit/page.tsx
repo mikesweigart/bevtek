@@ -31,11 +31,12 @@ export default async function EditItemPage({
   const { data: auth } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, store_id")
     .eq("id", auth.user!.id)
     .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
-  if (role !== "owner" && role !== "manager") redirect(`/inventory/${id}`);
+  const p = profile as { role?: string; store_id?: string } | null;
+  if (p?.role !== "owner" && p?.role !== "manager") redirect(`/inventory/${id}`);
+  const storeId = p.store_id!;
 
   const { data: item } = (await supabase
     .from("inventory")
@@ -58,7 +59,7 @@ export default async function EditItemPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Edit item</h1>
       </div>
-      <ItemForm initialValues={item} />
+      <ItemForm initialValues={item} storeId={storeId} />
     </div>
   );
 }
