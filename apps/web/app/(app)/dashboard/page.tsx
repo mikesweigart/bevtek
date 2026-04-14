@@ -11,8 +11,8 @@ const features = [
   {
     name: "Megan Assistant",
     desc: "Floor AI for real-time customer queries.",
-    href: null,
-    live: false,
+    href: "/assistant",
+    live: true,
   },
   {
     name: "Megan Receptionist",
