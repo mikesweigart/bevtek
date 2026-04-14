@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { NavTabs } from "./NavTabs";
 
 export default async function AppLayout({
   children,
@@ -25,6 +26,9 @@ export default async function AppLayout({
     .eq("id", profile.store_id)
     .maybeSingle();
 
+  const role = profile.role as "owner" | "manager" | "staff";
+  const isManager = role === "owner" || role === "manager";
+
   return (
     <div className="flex-1 flex flex-col">
       <header className="border-b border-[color:var(--color-border)]">
@@ -37,14 +41,22 @@ export default async function AppLayout({
               {store?.name ?? "—"}
             </span>
           </div>
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="text-sm text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
-            >
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-5 text-sm">
+            <span className="text-[color:var(--color-muted)]">
+              {profile.full_name ?? profile.email}
+            </span>
+            <form action="/auth/signout" method="post">
+              <button
+                type="submit"
+                className="text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+        <div className="mx-auto max-w-6xl px-6">
+          <NavTabs isManager={isManager} />
         </div>
       </header>
       <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-10">

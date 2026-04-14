@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(npm config:*)",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"/c/Users/Admin/AppData/Roaming/npm:/c/Program Files/nodejs:$PATH\")",
+      "Bash(pnpm -v)",
+      "Bash(mkdir -p apps packages)",
+      "Bash(pnpm create:*)",
+      "Bash(npx --yes create-next-app@latest apps/web --ts --tailwind --eslint --app --no-src-dir --no-turbopack --import-alias '@/*' --use-pnpm --skip-install --no-git --yes)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"http://localhost:3000/\")",
+      "Bash(curl -s \"http://localhost:3000/\")",
+      "Bash(curl -sv \"http://localhost:3000/\")",
+      "Bash(curl -s \"http://localhost:3000/\" -o /tmp/home.html)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"http://localhost:3001/\" -o /tmp/home.html)",
+      "Bash(cmd //c \"taskkill /F /PID 36468\")",
+      "Bash(grep -rE \"GenericSchema|type Database\" \"/c/Users/Admin/Desktop/BevTek/node_modules/.pnpm/@supabase+postgrest-js@\"*\"/node_modules/@supabase/postgrest-js/dist/cjs/types.d.ts\")",
+      "Bash(curl -s -o /tmp/r -w '%{http_code} %{redirect_url}' -L --max-redirs 0 http://localhost:3000__TRACKED_VAR__)",
+      "Bash(curl -s \"http://localhost:3000/signup\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000__TRACKED_VAR__)",
+      "Bash(cmd //c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -ano ^| findstr :3000 ^| findstr LISTENING'\\) do @taskkill /F /PID %a\")",
+      "Bash(cmd //c 'netstat -ano | findstr :3000 | findstr LISTENING')",
+      "Bash(cmd //c \"taskkill /F /PID 37968\")"
+    ]
+  }
+}

@@ -10,6 +10,7 @@ const PUBLIC_PATHS = new Set(["/", "/login", "/signup"]);
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/auth/")) return true; // confirm, signout
+  if (pathname.startsWith("/invite/")) return true; // invite acceptance
   return false;
 }
 
