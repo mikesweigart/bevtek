@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { EnrichButton } from "./EnrichButton";
+import { ProductImage } from "@/components/ProductImage";
 
 type Item = {
   id: string;
@@ -12,6 +13,8 @@ type Item = {
   price: number | null;
   cost: number | null;
   stock_qty: number;
+  image_url: string | null;
+  is_active: boolean;
 };
 
 const PAGE_SIZE = 50;
@@ -29,15 +32,17 @@ export default async function InventoryPage({
   const supabase = await createClient();
   let query = supabase
     .from("inventory")
-    .select("id, sku, name, brand, category, size_ml, price, cost, stock_qty", {
-      count: "exact",
-    })
+    .select(
+      "id, sku, name, brand, category, size_ml, price, cost, stock_qty, image_url, is_active",
+      {
+        count: "exact",
+      },
+    )
     .order("name", { ascending: true })
     .range(from, to);
 
   const trimmed = q.trim();
   if (trimmed) {
-    // Case-insensitive match on name, brand, or SKU.
     query = query.or(
       `name.ilike.%${trimmed}%,brand.ilike.%${trimmed}%,sku.ilike.%${trimmed}%`,
     );
@@ -60,12 +65,20 @@ export default async function InventoryPage({
             {total.toLocaleString()} item{total === 1 ? "" : "s"}
           </p>
         </div>
-        <Link
-          href="/inventory/import"
-          className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-4 py-2 text-sm font-medium whitespace-nowrap"
-        >
-          Import spreadsheet
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/inventory/new"
+            className="rounded-md border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)] px-4 py-2 text-sm font-medium whitespace-nowrap"
+          >
+            New item
+          </Link>
+          <Link
+            href="/inventory/import"
+            className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-4 py-2 text-sm font-medium whitespace-nowrap"
+          >
+            Import
+          </Link>
+        </div>
       </div>
 
       <form className="flex gap-2" action="/inventory">
@@ -104,30 +117,52 @@ export default async function InventoryPage({
               <table className="w-full text-sm">
                 <thead className="bg-zinc-50 text-xs text-[color:var(--color-muted)]">
                   <tr>
+                    <th className="px-4 py-2 w-16"></th>
                     <th className="text-left px-4 py-2 font-medium">Name</th>
-                    <th className="text-left px-4 py-2 font-medium">Brand</th>
                     <th className="text-left px-4 py-2 font-medium">Category</th>
                     <th className="text-left px-4 py-2 font-medium">SKU</th>
-                    <th className="text-right px-4 py-2 font-medium">Size</th>
                     <th className="text-right px-4 py-2 font-medium">Price</th>
                     <th className="text-right px-4 py-2 font-medium">Stock</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(items ?? []).map((i) => (
-                    <tr key={i.id} className="border-t border-[color:var(--color-border)]">
-                      <td className="px-4 py-2">{i.name}</td>
-                      <td className="px-4 py-2 text-[color:var(--color-muted)]">
-                        {i.brand ?? "—"}
+                    <tr
+                      key={i.id}
+                      className="border-t border-[color:var(--color-border)] hover:bg-zinc-50/60"
+                    >
+                      <td className="px-4 py-2">
+                        <Link
+                          href={`/inventory/${i.id}`}
+                          className="block w-10 h-10"
+                          aria-label={`View ${i.name}`}
+                        >
+                          <ProductImage
+                            src={i.image_url}
+                            alt={i.name}
+                            brand={i.brand}
+                            size="sm"
+                          />
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2">
+                        <Link
+                          href={`/inventory/${i.id}`}
+                          className="block hover:text-[color:var(--color-gold)]"
+                        >
+                          <div className="font-medium">{i.name}</div>
+                          {i.brand && (
+                            <div className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)]">
+                              {i.brand}
+                            </div>
+                          )}
+                        </Link>
                       </td>
                       <td className="px-4 py-2 text-[color:var(--color-muted)]">
                         {i.category ?? "—"}
                       </td>
                       <td className="px-4 py-2 font-mono text-xs text-[color:var(--color-muted)]">
                         {i.sku ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right text-[color:var(--color-muted)]">
-                        {i.size_ml ? `${i.size_ml}ml` : "—"}
                       </td>
                       <td className="px-4 py-2 text-right">
                         {i.price != null ? `$${Number(i.price).toFixed(2)}` : "—"}
