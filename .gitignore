@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+dist/
+build/
+out/
+
+# Env
+.env
+.env.local
+.env*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Misc
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Legacy content files (source material, not committed)
+*.pptx
+*.pptm
+*.xlsx
+*.xlsm
+*.numbers
+*.docx
+*.pdf
+*.mp4
+*.png
+*.PNG
+*.jpg
+*.JPG
+*.jpeg
+*.ics
+*.exe
+*.csv
+*.txt
