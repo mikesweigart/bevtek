@@ -18,8 +18,8 @@ const features = [
   {
     name: "Megan Receptionist",
     desc: "Inbound phone calls via Retell AI.",
-    href: null,
-    live: false,
+    href: "/calls",
+    live: true,
   },
   {
     name: "Megan Shopper",
@@ -30,8 +30,8 @@ const features = [
   {
     name: "Megan Texting",
     desc: "iMessage conversations via Sendblue.",
-    href: null,
-    live: false,
+    href: "/texts",
+    live: true,
   },
 ];
 

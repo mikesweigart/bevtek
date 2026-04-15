@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 
 type Store = {
@@ -9,6 +10,31 @@ type Store = {
   slug: string;
   logo_url: string | null;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("public_stores")
+    .select("name, logo_url")
+    .eq("slug", slug)
+    .maybeSingle();
+  const store = data as { name: string; logo_url: string | null } | null;
+  if (!store) return { title: "Store not found" };
+  return {
+    title: store.name,
+    description: `Shop ${store.name} online.`,
+    openGraph: {
+      title: store.name,
+      description: `Shop ${store.name} online.`,
+      images: store.logo_url ? [{ url: store.logo_url }] : undefined,
+    },
+  };
+}
 
 export default async function ShopperLayout({
   children,

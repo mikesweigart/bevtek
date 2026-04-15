@@ -1,7 +1,51 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { ProductImage } from "@/components/ProductImage";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; id: string }>;
+}): Promise<Metadata> {
+  const { slug, id } = await params;
+  const supabase = await createClient();
+  const { data: store } = await supabase
+    .from("public_stores")
+    .select("name")
+    .eq("slug", slug)
+    .maybeSingle();
+  const { data: item } = await supabase
+    .from("public_inventory")
+    .select("name, brand, description, image_url, price")
+    .eq("id", id)
+    .maybeSingle();
+  const s = store as { name: string } | null;
+  const i = item as
+    | {
+        name: string;
+        brand: string | null;
+        description: string | null;
+        image_url: string | null;
+        price: number | null;
+      }
+    | null;
+  if (!s || !i) return { title: "Not found" };
+  const title = i.brand ? `${i.brand} · ${i.name}` : i.name;
+  const desc =
+    i.description ??
+    `${i.price != null ? `$${Number(i.price).toFixed(2)} · ` : ""}${s.name}`;
+  return {
+    title,
+    description: desc,
+    openGraph: {
+      title,
+      description: desc,
+      images: i.image_url ? [{ url: i.image_url }] : undefined,
+    },
+  };
+}
 
 type Store = { id: string; name: string; slug: string };
 type Item = {
