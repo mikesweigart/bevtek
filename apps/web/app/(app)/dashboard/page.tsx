@@ -54,7 +54,26 @@ export default async function DashboardPage() {
   const isManager = p.role === "owner" || p.role === "manager";
 
   // Parallel counts + the pieces the getting-started checklist needs.
-  const [inventory, modules, team, storeRes, recentQueries, recentProgress] =
+  // Try the full store query first; fall back to base columns if migrations
+  // 6/8 haven't been applied yet.
+  async function loadStore() {
+    const full = await supabase
+      .from("stores")
+      .select(
+        "slug, logo_url, retell_webhook_secret, sendblue_webhook_secret",
+      )
+      .eq("id", p.store_id)
+      .maybeSingle();
+    if (!full.error) return full.data;
+    const fallback = await supabase
+      .from("stores")
+      .select("slug")
+      .eq("id", p.store_id)
+      .maybeSingle();
+    return fallback.data;
+  }
+
+  const [inventory, modules, team, storeData, recentQueries, recentProgress] =
     await Promise.all([
       supabase.from("inventory").select("*", { count: "exact", head: true }),
       supabase
@@ -62,13 +81,7 @@ export default async function DashboardPage() {
         .select("*", { count: "exact", head: true })
         .eq("is_published", true),
       supabase.from("users").select("*", { count: "exact", head: true }),
-      supabase
-        .from("stores")
-        .select(
-          "slug, logo_url, retell_webhook_secret, sendblue_webhook_secret",
-        )
-        .eq("id", p.store_id)
-        .maybeSingle(),
+      loadStore(),
       supabase
         .from("floor_queries")
         .select("id, query_text, created_at")
@@ -82,7 +95,7 @@ export default async function DashboardPage() {
         .limit(5),
     ]);
 
-  const store = storeRes.data as {
+  const store = storeData as {
     slug?: string;
     logo_url?: string;
     retell_webhook_secret?: string;

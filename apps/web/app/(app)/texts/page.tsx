@@ -46,17 +46,22 @@ export default async function TextsPage() {
   const p = profile as { role?: string; store_id?: string } | null;
   const isOwner = p?.role === "owner";
 
-  const { data: store } = await supabase
+  type StoreBits = {
+    sendblue_webhook_secret?: string | null;
+    sendblue_number?: string | null;
+  };
+  let s: StoreBits | null = null;
+  let migrationMissing = false;
+  const storeQ = await supabase
     .from("stores")
     .select("sendblue_webhook_secret, sendblue_number")
     .eq("id", p!.store_id!)
     .maybeSingle();
-  const s = store as
-    | {
-        sendblue_webhook_secret?: string | null;
-        sendblue_number?: string | null;
-      }
-    | null;
+  if (storeQ.error) {
+    migrationMissing = true;
+  } else {
+    s = (storeQ.data as StoreBits | null) ?? null;
+  }
   const hasSecret = Boolean(s?.sendblue_webhook_secret);
 
   const { data: consentData } = await supabase
@@ -84,7 +89,14 @@ export default async function TextsPage() {
         </p>
       </div>
 
-      {consent.length === 0 && (
+      {migrationMissing && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
+          Run migration 8 (webhook_rpc) in the Supabase SQL Editor to enable
+          Texting setup.
+        </div>
+      )}
+
+      {consent.length === 0 && !migrationMissing && (
         <section className="rounded-lg border border-[color:var(--color-border)] p-6 space-y-4">
           <div className="flex items-center gap-3">
             <span
