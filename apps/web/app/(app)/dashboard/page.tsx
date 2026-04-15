@@ -17,7 +17,7 @@ const features = [
   },
   {
     name: "Megan Receptionist",
-    desc: "Inbound phone calls via Retell AI.",
+    desc: "24/7 AI answers every inbound call.",
     href: "/calls",
     live: true,
   },
@@ -29,7 +29,7 @@ const features = [
   },
   {
     name: "Megan Texting",
-    desc: "iMessage conversations via Sendblue.",
+    desc: "iMessage conversations with your customers.",
     href: "/texts",
     live: true,
   },
@@ -136,12 +136,12 @@ export default async function DashboardPage() {
     },
     {
       done: Boolean(store?.retell_webhook_secret),
-      label: "Connect Megan Receptionist (Retell AI)",
+      label: "Activate Megan Receptionist",
       href: "/calls",
     },
     {
       done: Boolean(store?.sendblue_webhook_secret),
-      label: "Connect Megan Texting (Sendblue)",
+      label: "Activate Megan Texting",
       href: "/texts",
     },
   ];

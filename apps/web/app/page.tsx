@@ -323,16 +323,15 @@ function HowItWorks() {
 const TIERS = [
   {
     name: "Starter",
-    setup: 699,
-    monthly: 399,
-    tagline: "Answer every call, recover lost sales.",
+    monthly: 79,
+    tagline: "Megan Trainer. Up to 10 staff.",
     features: [
-      "AI phone answering (Receptionist)",
-      "Message routing via text/email",
-      "Basic inventory lookup (weekly updates)",
-      "Megan Trainer for staff",
-      "Up to 3 team members",
-      "Email support",
+      "All 44 beverage training modules",
+      "Quizzes with retry + star rewards",
+      "Level system (Newcomer → Elite)",
+      "Voice narration (listen while stocking)",
+      "Manager progress dashboard",
+      "Up to 10 staff members",
     ],
     cta: "Start free trial",
     best: "Small shops",
@@ -340,36 +339,47 @@ const TIERS = [
   },
   {
     name: "Pro",
-    setup: 999,
-    monthly: 599,
-    tagline: "The full team experience — most stores pick this.",
+    monthly: 199,
+    tagline: "Trainer + live AI floor assistant + voice.",
     features: [
       "Everything in Starter",
-      "Full live inventory integration",
-      "Hold-for-Pickup text alerts",
-      "In-store tablet/kiosk mode",
-      "Megan Shopper storefront",
-      "Megan Assistant (floor AI)",
-      "Weekly performance reports",
-      "Unlimited team members",
+      "Unlimited staff",
+      "Ask Megan — text floor assistant",
+      "Megan Voice — listens + responds in under a second",
+      "Guided customer walk flow",
+      "CSV inventory upload",
     ],
     cta: "Start free trial",
-    best: "Stores $1–2.5M revenue",
+    best: "Stores focused on the floor",
+    highlight: false,
+  },
+  {
+    name: "Pro Plus",
+    monthly: 249,
+    tagline: "Pro + iMessage customer recaps.",
+    features: [
+      "Everything in Pro",
+      "Post-call iMessage summaries",
+      "Hold request confirmations by text",
+      "Two-way customer text chat",
+      "No A2P registration needed",
+      "Blue bubble — feels personal",
+    ],
+    cta: "Start free trial",
+    best: "Most stores pick this",
     highlight: true,
   },
   {
-    name: "Elite",
-    setup: 1499,
-    monthly: 899,
-    tagline: "Multi-store. Custom brand voice. White-glove.",
+    name: "Enterprise",
+    monthly: 399,
+    tagline: "Full suite — Shopper + live POS + multi-location.",
     features: [
-      "Everything in Pro",
-      "Multi-store inventory sync",
-      "Custom branded AI voice & tone",
-      "Advanced analytics dashboard",
-      "Dedicated success manager",
-      "Priority 24/7 support",
-      "Quarterly strategy review",
+      "Everything in Pro Plus",
+      "Megan Shopper (customer app)",
+      "“Hold this” customer requests",
+      "Live POS API sync",
+      "Multi-location dashboard",
+      "Custom module builder (PDF → module)",
     ],
     cta: "Talk to sales",
     best: "Multi-location / high volume",
@@ -378,10 +388,26 @@ const TIERS = [
 ];
 
 const ADD_ONS = [
-  { name: "Bilingual voice (English/Spanish)", price: 49, desc: "For diverse communities" },
-  { name: "SMS follow-ups", price: 99, desc: "Quotes, orders, holds — boost repeat visits" },
-  { name: "Custom training library", price: 79, desc: "Add your own brand/product modules" },
-  { name: "Call transcription archive", price: 49, desc: "For compliance + insights" },
+  {
+    name: "Megan Receptionist",
+    price: 49,
+    desc: "24/7 AI answers your inbound phone line",
+  },
+  {
+    name: "White-glove onboarding",
+    price: 149,
+    desc: "One-time · we set everything up for you",
+  },
+  {
+    name: "Custom branded voice",
+    price: 19,
+    desc: "$99 setup · Megan in your brand voice",
+  },
+  {
+    name: "Extra module pack",
+    price: 49,
+    desc: "Store-specific training content",
+  },
 ];
 
 function Pricing() {
@@ -404,13 +430,13 @@ function Pricing() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:gap-6 md:grid-cols-3 items-start">
+        <div className="grid gap-4 md:gap-5 md:grid-cols-2 lg:grid-cols-4 items-start">
           {TIERS.map((t) => (
             <div
               key={t.name}
-              className={`relative rounded-2xl bg-white p-6 sm:p-7 space-y-5 ${
+              className={`relative rounded-2xl bg-white p-6 space-y-5 ${
                 t.highlight
-                  ? "border-2 border-[color:var(--color-gold)] shadow-lg md:-translate-y-2"
+                  ? "border-2 border-[color:var(--color-gold)] shadow-lg lg:-translate-y-2"
                   : "border border-[color:var(--color-border)]"
               }`}
             >
@@ -423,7 +449,7 @@ function Pricing() {
                 <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
                   {t.name}
                 </p>
-                <p className="text-sm text-[color:var(--color-muted)] mt-1 min-h-[2.5rem]">
+                <p className="text-sm text-[color:var(--color-muted)] mt-1 min-h-[2.5rem] leading-snug">
                   {t.tagline}
                 </p>
               </div>
@@ -437,11 +463,13 @@ function Pricing() {
                   </span>
                 </p>
                 <p className="text-xs text-[color:var(--color-muted)] mt-1">
-                  ${t.setup.toLocaleString()} one-time setup
+                  per location · billed monthly
                 </p>
               </div>
               <Link
-                href={t.name === "Elite" ? "mailto:sales@bevtek.ai" : "/signup"}
+                href={
+                  t.name === "Enterprise" ? "mailto:sales@bevtek.ai" : "/signup"
+                }
                 className={`block w-full rounded-md py-2.5 text-sm font-semibold text-center transition-colors ${
                   t.highlight
                     ? "bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white"

@@ -40,7 +40,10 @@
       "Bash(mkdir -p /tmp/docx-extract)",
       "Bash(rm -f document.xml)",
       "Bash(unzip -o -p \"/c/Users/Admin/Desktop/BevTek/BevTek_AI_Pricing_and_Value_Proposition.docx\" word/document.xml)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -oiE \"\\(Starter|Pro|Elite|\\\\\\\\\\\\$399|\\\\\\\\\\\\$599|\\\\\\\\\\\\$899|Grapes|Most popular|iOS \\\\\\\\+ Android|summer 2026\\)\")",
+      "Bash(sleep 1.9 curl -s \"https://bevtek-web.vercel.app/\" wc -c /tmp/home.html grep -oE \"\\(Starter|Elite|\\\\\\\\\\\\$399|\\\\\\\\\\\\$599|Grapes|Most popular|summer\\)\" /tmp/home.html)",
+      "WebFetch(domain:claude.ai)"
     ]
   }
 }

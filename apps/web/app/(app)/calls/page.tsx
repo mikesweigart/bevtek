@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import { RotateSecretButton } from "./RotateSecretButton";
 
 type CallLog = {
   id: string;
@@ -151,19 +150,6 @@ export default async function CallsPage() {
               your plan.
             </p>
           </div>
-          {isOwner && (
-            <details className="text-xs">
-              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
-                Advanced: self-serve webhook setup (for developers)
-              </summary>
-              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4 bg-white">
-                <RotateSecretButton
-                  webhookUrl={webhookUrl}
-                  initialSecret={s?.retell_webhook_secret ?? null}
-                />
-              </div>
-            </details>
-          )}
         </section>
       )}
 
@@ -204,19 +190,6 @@ export default async function CallsPage() {
               </tbody>
             </table>
           </div>
-          {isOwner && (
-            <details className="text-sm">
-              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
-                Webhook configuration
-              </summary>
-              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4">
-                <RotateSecretButton
-                  webhookUrl={webhookUrl}
-                  initialSecret={s?.retell_webhook_secret ?? null}
-                />
-              </div>
-            </details>
-          )}
         </>
       )}
     </div>

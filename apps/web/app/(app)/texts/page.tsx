@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import { RotateSecretButton } from "./RotateSecretButton";
 
 type ConsentRow = {
   id: string;
@@ -138,19 +137,6 @@ export default async function TextsPage() {
               Turnaround: 24–48 hours. TCPA compliance handled for you.
             </p>
           </div>
-          {isOwner && (
-            <details className="text-xs">
-              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
-                Advanced: self-serve webhook setup (for developers)
-              </summary>
-              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4 bg-white">
-                <RotateSecretButton
-                  webhookUrl={webhookUrl}
-                  initialSecret={s?.sendblue_webhook_secret ?? null}
-                />
-              </div>
-            </details>
-          )}
         </section>
       )}
 
@@ -217,19 +203,6 @@ export default async function TextsPage() {
             </table>
           </div>
 
-          {isOwner && (
-            <details className="text-sm">
-              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
-                Webhook configuration
-              </summary>
-              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4">
-                <RotateSecretButton
-                  webhookUrl={webhookUrl}
-                  initialSecret={s?.sendblue_webhook_secret ?? null}
-                />
-              </div>
-            </details>
-          )}
         </>
       )}
     </div>
