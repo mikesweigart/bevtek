@@ -5,7 +5,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 // Paths reachable without a session.
-const PUBLIC_PATHS = new Set(["/", "/login", "/signup"]);
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/signup",
+  "/robots.txt",
+  "/sitemap.xml",
+]);
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;

@@ -64,7 +64,9 @@ export default async function DashboardPage() {
       supabase.from("users").select("*", { count: "exact", head: true }),
       supabase
         .from("stores")
-        .select("slug, logo_url")
+        .select(
+          "slug, logo_url, retell_webhook_secret, sendblue_webhook_secret",
+        )
         .eq("id", p.store_id)
         .maybeSingle(),
       supabase
@@ -80,7 +82,12 @@ export default async function DashboardPage() {
         .limit(5),
     ]);
 
-  const store = storeRes.data as { slug?: string; logo_url?: string } | null;
+  const store = storeRes.data as {
+    slug?: string;
+    logo_url?: string;
+    retell_webhook_secret?: string;
+    sendblue_webhook_secret?: string;
+  } | null;
   const hdrs = await headers();
   const origin =
     hdrs.get("origin") ?? `http://${hdrs.get("host") ?? "localhost:3000"}`;
@@ -113,6 +120,16 @@ export default async function DashboardPage() {
       done: counts.team > 1,
       label: "Invite a teammate",
       href: "/team",
+    },
+    {
+      done: Boolean(store?.retell_webhook_secret),
+      label: "Connect Megan Receptionist (Retell AI)",
+      href: "/calls",
+    },
+    {
+      done: Boolean(store?.sendblue_webhook_secret),
+      label: "Connect Megan Texting (Sendblue)",
+      href: "/texts",
     },
   ];
   const completedCount = checklist.filter((i) => i.done).length;
