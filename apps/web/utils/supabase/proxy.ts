@@ -19,6 +19,9 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/invite/")) return true; // invite acceptance
   if (pathname.startsWith("/s/")) return true; // Megan Shopper (customer-facing)
   if (pathname.startsWith("/api/")) return true; // webhooks
+  if (pathname === "/affiliates") return true;
+  if (pathname.startsWith("/affiliates/signup")) return true;
+  if (pathname.startsWith("/affiliates/login")) return true;
   return false;
 }
 
@@ -50,6 +53,33 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Affiliate attribution: if ?ref=CODE is present, stamp a 90-day cookie
+  // and fire-and-forget log the click via the public log_affiliate_click RPC.
+  const refCode = request.nextUrl.searchParams.get("ref");
+  if (refCode && /^[a-z0-9]{4,16}$/.test(refCode)) {
+    const existing = request.cookies.get("bt_ref")?.value;
+    if (existing !== refCode) {
+      supabaseResponse.cookies.set("bt_ref", refCode, {
+        maxAge: 60 * 60 * 24 * 90, // 90 days
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+      });
+      // Best-effort click log. Awaited (fast RPC); errors are swallowed.
+      try {
+        await supabase.rpc("log_affiliate_click", {
+          p_code: refCode,
+          p_landing_path: pathname,
+          p_user_agent: request.headers.get("user-agent"),
+          p_referrer: request.headers.get("referer"),
+          p_ip_hash: null,
+        });
+      } catch {
+        // swallow; never block a page load on analytics
+      }
+    }
+  }
 
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();
