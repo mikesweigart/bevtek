@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { PhoneMockup } from "@/components/PhoneMockup";
+import { ShopperMock } from "@/components/mockups/ShopperMock";
+import { AssistantMock } from "@/components/mockups/AssistantMock";
+import { TrainerMock } from "@/components/mockups/TrainerMock";
+import { ReceptionistMock } from "@/components/mockups/ReceptionistMock";
+import { DashboardMock } from "@/components/mockups/DashboardMock";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -13,10 +19,10 @@ export default async function Home() {
       <Hero />
       <Problem />
       <MeetMegan />
+      <Showcase />
       <ValueStack />
       <HowItWorks />
       <Pricing />
-      <Affiliate />
       <Guarantee />
       <FAQ />
       <FinalCTA />
@@ -24,8 +30,6 @@ export default async function Home() {
     </main>
   );
 }
-
-/* ─────────────────────────── Top Bar ─────────────────────────── */
 
 function TopBar() {
   return (
@@ -59,8 +63,6 @@ function TopBar() {
   );
 }
 
-/* ─────────────────────────── Hero ─────────────────────────── */
-
 function Hero() {
   return (
     <section className="px-6 pt-20 pb-16 sm:pt-28 sm:pb-24">
@@ -70,8 +72,7 @@ function Hero() {
           Built for beverage retail
         </div>
         <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05]">
-          Meet{" "}
-          <span className="text-[color:var(--color-gold)]">Megan</span>.
+          Meet <span className="text-[color:var(--color-gold)]">Megan</span>.
           <br />
           Your best hire ever.
         </h1>
@@ -102,8 +103,6 @@ function Hero() {
     </section>
   );
 }
-
-/* ─────────────────── Problem / Agitation ─────────────────── */
 
 function Problem() {
   const pains = [
@@ -137,11 +136,9 @@ function Problem() {
   );
 }
 
-/* ─────────────────── Meet Megan ─────────────────── */
-
 function MeetMegan() {
   return (
-    <section className="px-6 py-16 sm:py-24">
+    <section className="px-6 py-16 sm:py-20">
       <div className="max-w-3xl mx-auto text-center space-y-6">
         <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
           Introducing
@@ -161,14 +158,49 @@ function MeetMegan() {
   );
 }
 
-/* ─────────────────── Value Stack ─────────────────── */
+function Showcase() {
+  const screens = [
+    { label: "Megan Shopper", component: <ShopperMock /> },
+    { label: "Megan Assistant", component: <AssistantMock /> },
+    { label: "Megan Trainer", component: <TrainerMock /> },
+    { label: "Megan Receptionist", component: <ReceptionistMock /> },
+    { label: "Manager Dashboard", component: <DashboardMock /> },
+  ];
+  return (
+    <section className="px-6 py-16 sm:py-24 bg-zinc-50 border-y border-[color:var(--color-border)] overflow-hidden">
+      <div className="max-w-6xl mx-auto space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+            See it on your phone
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            What Megan looks like.
+          </h2>
+          <p className="text-[color:var(--color-muted)] leading-relaxed">
+            Mobile-first from day one. Your staff and customers never download
+            an app — just open the link on any phone.
+          </p>
+        </div>
+        <div className="overflow-x-auto -mx-6 px-6">
+          <div className="flex gap-8 justify-start lg:justify-center pb-4 min-w-min">
+            {screens.map((s) => (
+              <div key={s.label} className="shrink-0">
+                <PhoneMockup label={s.label}>{s.component}</PhoneMockup>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const STACK = [
   {
     name: "Megan Receptionist",
     benefit: "Never miss another call",
     desc: "AI voice agent answers inbound calls, books orders, answers FAQs. 24/7. In any language.",
-    worth: "Like a part-time receptionist for a full-time price of $0.",
+    worth: "Like a part-time receptionist for $0.",
   },
   {
     name: "Megan Assistant",
@@ -198,7 +230,7 @@ const STACK = [
 
 function ValueStack() {
   return (
-    <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
+    <section className="px-6 py-16 sm:py-20">
       <div className="max-w-5xl mx-auto space-y-10">
         <div className="text-center space-y-3">
           <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
@@ -220,9 +252,7 @@ function ValueStack() {
                   {item.name}
                 </h3>
               </div>
-              <p className="text-xl font-semibold leading-tight">
-                {item.benefit}
-              </p>
+              <p className="text-xl font-semibold leading-tight">{item.benefit}</p>
               <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
                 {item.desc}
               </p>
@@ -246,33 +276,15 @@ function ValueStack() {
   );
 }
 
-/* ─────────────────── How it works ─────────────────── */
-
 function HowItWorks() {
   const steps = [
-    {
-      n: 1,
-      title: "Sign up free",
-      body: "30 seconds. Email and password. No credit card.",
-    },
-    {
-      n: 2,
-      title: "Import your inventory",
-      body: "Drop any spreadsheet from Square, Lightspeed, or Excel. Megan figures out the columns.",
-    },
-    {
-      n: 3,
-      title: "Turn on the features you want",
-      body: "Flip a switch for Receptionist, Texting, Trainer, or Shopper. Add more anytime.",
-    },
-    {
-      n: 4,
-      title: "Share your storefront",
-      body: "Get a public link to give customers. Or keep it internal — your call.",
-    },
+    { n: 1, title: "Sign up free", body: "30 seconds. Email and password. No credit card." },
+    { n: 2, title: "Import your inventory", body: "Drop any spreadsheet from Square, Lightspeed, or Excel. Megan figures out the columns." },
+    { n: 3, title: "Turn on the features you want", body: "Flip a switch for Receptionist, Texting, Trainer, or Shopper. Add more anytime." },
+    { n: 4, title: "Share your storefront", body: "Get a public link to give customers. Or keep it internal — your call." },
   ];
   return (
-    <section id="how-it-works" className="px-6 py-16 sm:py-24">
+    <section id="how-it-works" className="px-6 py-16 sm:py-24 bg-zinc-50 border-y border-[color:var(--color-border)]">
       <div className="max-w-4xl mx-auto space-y-10">
         <div className="text-center space-y-3">
           <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
@@ -284,18 +296,13 @@ function HowItWorks() {
         </div>
         <ol className="grid gap-4 sm:grid-cols-2">
           {steps.map((s) => (
-            <li
-              key={s.n}
-              className="rounded-lg border border-[color:var(--color-border)] p-5 flex gap-4"
-            >
+            <li key={s.n} className="rounded-lg border border-[color:var(--color-border)] p-5 flex gap-4 bg-white">
               <span className="shrink-0 w-8 h-8 rounded-full bg-[color:var(--color-gold)] text-white flex items-center justify-center text-sm font-semibold">
                 {s.n}
               </span>
               <div>
                 <p className="font-semibold">{s.title}</p>
-                <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
-                  {s.body}
-                </p>
+                <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">{s.body}</p>
               </div>
             </li>
           ))}
@@ -305,11 +312,9 @@ function HowItWorks() {
   );
 }
 
-/* ─────────────────── Pricing ─────────────────── */
-
 function Pricing() {
   return (
-    <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
+    <section className="px-6 py-16 sm:py-20">
       <div className="max-w-3xl mx-auto text-center space-y-8">
         <div className="space-y-3">
           <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
@@ -341,9 +346,7 @@ function Pricing() {
               "Email support",
             ].map((x) => (
               <li key={x} className="flex gap-2">
-                <span className="text-[color:var(--color-gold)] font-semibold">
-                  ✓
-                </span>
+                <span className="text-[color:var(--color-gold)] font-semibold">✓</span>
                 <span>{x}</span>
               </li>
             ))}
@@ -360,55 +363,11 @@ function Pricing() {
   );
 }
 
-/* ─────────────────── Affiliate ─────────────────── */
-
-function Affiliate() {
-  return (
-    <section
-      id="affiliates"
-      className="px-6 py-16 sm:py-24 border-b border-[color:var(--color-border)]"
-    >
-      <div className="max-w-4xl mx-auto">
-        <div className="rounded-2xl bg-gradient-to-br from-[#FBF7F0] to-[#EED9B8] p-8 sm:p-12 text-center space-y-6">
-          <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
-            Partner program
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            Earn 30% recurring, for life.
-          </h2>
-          <p className="text-base sm:text-lg text-[color:var(--color-fg)] max-w-2xl mx-auto leading-relaxed">
-            Know distributors, store owners, or beverage industry folks? Every
-            store you bring on pays you 30% of their subscription every month.
-            Forever. Real-time dashboard. Stripe payouts. 90-day attribution
-            cookie.
-          </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
-            <Link
-              href="/affiliates"
-              className="inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-semibold text-white bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] transition-colors"
-            >
-              Become an affiliate
-            </Link>
-            <Link
-              href="/affiliates/login"
-              className="inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-medium bg-white border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)] transition-colors"
-            >
-              Affiliate login
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────── Guarantee ─────────────────── */
-
 function Guarantee() {
   return (
-    <section className="px-6 py-16 sm:py-20">
+    <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
       <div className="max-w-3xl mx-auto text-center space-y-4">
-        <div className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-[color:var(--color-muted)] border border-[color:var(--color-border)] rounded-full px-3 py-1">
+        <div className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-[color:var(--color-muted)] border border-[color:var(--color-border)] rounded-full px-3 py-1 bg-white">
           <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-gold)]" />
           Risk-free
         </div>
@@ -424,58 +383,33 @@ function Guarantee() {
   );
 }
 
-/* ─────────────────── FAQ ─────────────────── */
-
 const FAQS = [
-  {
-    q: "How long does setup take?",
-    a: "About 10 minutes from signup to importing your inventory. Connecting Receptionist (Retell AI) and Texting (Sendblue) takes another 15 minutes each, but they're optional.",
-  },
-  {
-    q: "Do I need a Retell or Sendblue account?",
-    a: "Only if you want voice calls or iMessage. The other three products (Trainer, Assistant, Shopper) work with zero external services. Pick the features you need.",
-  },
-  {
-    q: "What POS systems do you integrate with?",
-    a: "You can upload inventory from any CSV or Excel export. We've tested Square, Lightspeed, and plain spreadsheets. Column detection is automatic.",
-  },
-  {
-    q: "Can my whole team use this?",
-    a: "Yes. Invite staff with a single link; they get the floor-side Assistant and Trainer. Managers and owners see more.",
-  },
-  {
-    q: "What does it cost after launch?",
-    a: "We'll publish plans when we move to paid. Founding accounts lock in their rate at signup and never see a price increase while active.",
-  },
+  { q: "How long does setup take?", a: "About 10 minutes from signup to importing your inventory. Connecting Receptionist (Retell AI) and Texting (Sendblue) takes another 15 minutes each, but they're optional." },
+  { q: "Do I need a Retell or Sendblue account?", a: "Only if you want voice calls or iMessage. The other three products (Trainer, Assistant, Shopper) work with zero external services. Pick the features you need." },
+  { q: "What POS systems do you integrate with?", a: "You can upload inventory from any CSV or Excel export. We've tested Square, Lightspeed, and plain spreadsheets. Column detection is automatic." },
+  { q: "Can my whole team use this?", a: "Yes. Invite staff with a single link; they get the floor-side Assistant and Trainer. Managers and owners see more." },
+  { q: "Is there an iOS app?", a: "Not yet — and you don't need one. Megan is mobile-first on the web, so your staff and customers just open a link on any phone. A native iOS/Android app is on the roadmap." },
+  { q: "What does it cost after launch?", a: "We'll publish plans when we move to paid. Founding accounts lock in their rate at signup and never see a price increase while active." },
 ];
 
 function FAQ() {
   return (
-    <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
+    <section className="px-6 py-16 sm:py-20">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="text-center space-y-3">
           <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
             Questions
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Quick answers
-          </h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Quick answers</h2>
         </div>
         <div className="space-y-3">
           {FAQS.map((f) => (
-            <details
-              key={f.q}
-              className="group rounded-lg border border-[color:var(--color-border)] bg-white"
-            >
+            <details key={f.q} className="group rounded-lg border border-[color:var(--color-border)] bg-white">
               <summary className="cursor-pointer p-4 text-sm font-medium flex items-center justify-between">
                 {f.q}
-                <span className="text-[color:var(--color-muted)] group-open:rotate-45 transition-transform text-lg">
-                  +
-                </span>
+                <span className="text-[color:var(--color-muted)] group-open:rotate-45 transition-transform text-lg">+</span>
               </summary>
-              <div className="px-4 pb-4 text-sm text-[color:var(--color-muted)] leading-relaxed">
-                {f.a}
-              </div>
+              <div className="px-4 pb-4 text-sm text-[color:var(--color-muted)] leading-relaxed">{f.a}</div>
             </details>
           ))}
         </div>
@@ -484,11 +418,9 @@ function FAQ() {
   );
 }
 
-/* ─────────────────── Final CTA ─────────────────── */
-
 function FinalCTA() {
   return (
-    <section className="px-6 py-16 sm:py-24">
+    <section className="px-6 py-16 sm:py-24 bg-zinc-50 border-y border-[color:var(--color-border)]">
       <div className="max-w-2xl mx-auto text-center space-y-6">
         <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
           Stop hiring. Start Megan.
@@ -508,15 +440,11 @@ function FinalCTA() {
   );
 }
 
-/* ─────────────────── Footer ─────────────────── */
-
 function Footer() {
   return (
-    <footer className="px-6 py-8 border-t border-[color:var(--color-border)]">
+    <footer className="px-6 py-8">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[color:var(--color-muted)]">
-        <p>
-          © {new Date().getFullYear()} BevTek.ai — Made for beverage retail.
-        </p>
+        <p>© {new Date().getFullYear()} BevTek.ai — Made for beverage retail.</p>
         <div className="flex items-center gap-5">
           <Link href="/affiliates" className="hover:text-[color:var(--color-fg)]">
             Affiliate program

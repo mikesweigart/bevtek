@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Affiliate Program",
   description:
-    "Earn 30% recurring commission for every store you refer to BevTek. Real-time dashboard, Stripe payouts.",
+    "Share your 10% discount code. Earn 15% recurring commission for life on every customer who redeems it.",
   openGraph: {
     title: "BevTek Affiliate Program",
     description:
-      "Earn 30% recurring commission for every store you refer to BevTek.",
+      "Share your 10% discount code. Earn 15% recurring commission for life.",
   },
 };
 
@@ -37,22 +37,21 @@ export default function AffiliatesLanding() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="px-6 pt-20 pb-16 sm:pt-28 sm:pb-20">
+      <section className="px-6 pt-20 pb-14 sm:pt-28 sm:pb-20">
         <div className="max-w-3xl mx-auto text-center space-y-6">
           <div className="inline-flex items-center gap-2 text-[11px] tracking-widest uppercase text-[color:var(--color-muted)] border border-[color:var(--color-border)] rounded-full px-3 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-gold)]" />
             Partner Program
           </div>
           <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05]">
-            Refer a store.
+            Give <span className="text-[color:var(--color-gold)]">10% off</span>.
             <br />
-            Get paid{" "}
-            <span className="text-[color:var(--color-gold)]">every month</span>.
+            Keep <span className="text-[color:var(--color-gold)]">15%</span> forever.
           </h1>
           <p className="text-lg sm:text-xl text-[color:var(--color-muted)] max-w-2xl mx-auto leading-relaxed">
-            If you know beverage retail — distributors, POS consultants, store
-            owners — you can turn that rolodex into monthly recurring income.
+            You get a personal discount code. Stores you share it with save 10%.
+            You earn 15% recurring commission on every dollar they spend — for
+            as long as they&apos;re a customer.
           </p>
           <div className="pt-2 flex items-center justify-center gap-3 flex-wrap">
             <Link
@@ -71,7 +70,6 @@ export default function AffiliatesLanding() {
         </div>
       </section>
 
-      {/* The offer */}
       <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
         <div className="max-w-4xl mx-auto space-y-10">
           <div className="text-center space-y-3">
@@ -84,40 +82,20 @@ export default function AffiliatesLanding() {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              {
-                headline: "30%",
-                title: "Recurring commission",
-                body: "Paid on every dollar your referrals spend, every month they stay. No caps.",
-              },
-              {
-                headline: "90 days",
-                title: "Attribution cookie",
-                body: "Your referral is credited even if they sign up three months later.",
-              },
-              {
-                headline: "Stripe",
-                title: "Automatic payouts",
-                body: "Connect Stripe once. We deposit earnings the 1st of every month.",
-              },
+              { headline: "10%", title: "Discount code to share", body: "Your custom code (like MIKE10) gives stores 10% off every month they stay subscribed." },
+              { headline: "15%", title: "Recurring commission", body: "Every dollar your referred stores pay, 15% flows to you — every month, for as long as they're a customer." },
+              { headline: "Life", title: "As long as they stay", body: "No caps. No expirations. Sign up a store in 2026, still earning on them in 2030." },
             ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-xl border border-[color:var(--color-border)] bg-white p-6 space-y-2"
-              >
-                <p className="text-4xl font-semibold text-[color:var(--color-gold)]">
-                  {item.headline}
-                </p>
+              <div key={item.title} className="rounded-xl border border-[color:var(--color-border)] bg-white p-6 space-y-2">
+                <p className="text-4xl font-semibold text-[color:var(--color-gold)]">{item.headline}</p>
                 <p className="font-semibold">{item.title}</p>
-                <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
-                  {item.body}
-                </p>
+                <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">{item.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Example earnings */}
       <section className="px-6 py-16 sm:py-20">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-3">
@@ -128,37 +106,25 @@ export default function AffiliatesLanding() {
               Do the napkin math.
             </h2>
             <p className="text-[color:var(--color-muted)]">
-              Illustrative only — pricing locks in at launch.
+              Assumes $100/mo avg. plan · 15% commission · after the 10% customer discount. Illustrative only.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { refs: "5 stores", monthly: "$150/mo", year: "$1,800/yr" },
-              { refs: "25 stores", monthly: "$750/mo", year: "$9,000/yr" },
-              { refs: "100 stores", monthly: "$3,000/mo", year: "$36,000/yr" },
+              { refs: "5 stores", monthly: "$75/mo", year: "$900/yr" },
+              { refs: "25 stores", monthly: "$375/mo", year: "$4,500/yr" },
+              { refs: "100 stores", monthly: "$1,500/mo", year: "$18,000/yr" },
             ].map((row) => (
-              <div
-                key={row.refs}
-                className="rounded-xl border border-[color:var(--color-border)] p-6 text-center"
-              >
-                <p className="text-sm text-[color:var(--color-muted)]">
-                  {row.refs}
-                </p>
+              <div key={row.refs} className="rounded-xl border border-[color:var(--color-border)] p-6 text-center">
+                <p className="text-sm text-[color:var(--color-muted)]">{row.refs}</p>
                 <p className="text-2xl font-semibold mt-1">{row.monthly}</p>
-                <p className="text-xs text-[color:var(--color-muted)] mt-1">
-                  {row.year}
-                </p>
+                <p className="text-xs text-[color:var(--color-muted)] mt-1">{row.year}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-[color:var(--color-muted)] text-center">
-            Assumes an estimated $100/mo average plan × 30% commission. Actual
-            figures will vary with plan mix and retention.
-          </p>
         </div>
       </section>
 
-      {/* How it works */}
       <section className="px-6 py-16 sm:py-20 bg-zinc-50 border-y border-[color:var(--color-border)]">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-3">
@@ -172,14 +138,11 @@ export default function AffiliatesLanding() {
           <ol className="space-y-3">
             {[
               "Apply in 60 seconds. We review same day.",
-              "Get your unique referral link (e.g. bevtek.ai/?ref=yourcode).",
-              "Share it with stores, distributors, your newsletter, your YouTube bio — wherever makes sense.",
-              "When they sign up and subscribe, your commission starts. Paid monthly via Stripe.",
+              "Get your custom 10% discount code (and a referral link, too).",
+              "Share the code with stores, distributors, newsletters, podcasts — wherever makes sense.",
+              "When they redeem it, your 15% commission starts. Paid monthly via Stripe.",
             ].map((step, i) => (
-              <li
-                key={step}
-                className="rounded-lg border border-[color:var(--color-border)] bg-white p-5 flex gap-4"
-              >
+              <li key={step} className="rounded-lg border border-[color:var(--color-border)] bg-white p-5 flex gap-4">
                 <span className="shrink-0 w-8 h-8 rounded-full bg-[color:var(--color-gold)] text-white flex items-center justify-center text-sm font-semibold">
                   {i + 1}
                 </span>
@@ -190,11 +153,38 @@ export default function AffiliatesLanding() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="px-6 py-16 sm:py-24">
+      <section className="px-6 py-16 sm:py-20">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <div className="text-center space-y-3">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Who this is for
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight">
+              If you know beverage retail, you already qualify.
+            </h2>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 text-sm">
+            {[
+              "Distributors and reps who visit dozens of stores each week.",
+              "POS consultants and retail software installers.",
+              "Industry newsletters, podcasts, and YouTube channels.",
+              "Store owners with friends in the business.",
+              "Franchise organizations and buying groups.",
+              "Anyone with a rolodex in beverage retail.",
+            ].map((x) => (
+              <li key={x} className="flex gap-2 rounded-lg border border-[color:var(--color-border)] p-4">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span className="text-[color:var(--color-muted)] leading-relaxed">{x}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="px-6 py-16 sm:py-24 bg-zinc-50 border-y border-[color:var(--color-border)]">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-3xl font-semibold tracking-tight">
-            Ready to get your link?
+            Ready to get your code?
           </h2>
           <Link
             href="/affiliates/signup"
@@ -208,11 +198,9 @@ export default function AffiliatesLanding() {
         </div>
       </section>
 
-      <footer className="px-6 py-8 border-t border-[color:var(--color-border)]">
+      <footer className="px-6 py-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[color:var(--color-muted)]">
-          <Link href="/" className="hover:text-[color:var(--color-fg)]">
-            ← Back to BevTek
-          </Link>
+          <Link href="/" className="hover:text-[color:var(--color-fg)]">← Back to BevTek</Link>
           <p>© {new Date().getFullYear()} BevTek.ai</p>
         </div>
       </footer>
