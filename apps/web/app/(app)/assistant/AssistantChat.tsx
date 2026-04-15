@@ -5,6 +5,13 @@ import { askAction, type AssistantState } from "./actions";
 
 const initial: AssistantState = { error: null, query: null, results: [] };
 
+const SUGGESTIONS = [
+  "bourbon under $50",
+  "something for a gift",
+  "dry red wine",
+  "gluten-free beer",
+];
+
 export function AssistantChat() {
   const [state, action, pending] = useActionState(askAction, initial);
   const formRef = useRef<HTMLFormElement>(null);
@@ -13,6 +20,12 @@ export function AssistantChat() {
   useEffect(() => {
     if (!pending) inputRef.current?.focus();
   }, [pending, state.query]);
+
+  function submitWithQuery(q: string) {
+    if (!inputRef.current || !formRef.current) return;
+    inputRef.current.value = q;
+    formRef.current.requestSubmit();
+  }
 
   return (
     <div className="space-y-6">
@@ -32,6 +45,21 @@ export function AssistantChat() {
           {pending ? "…" : "Ask"}
         </button>
       </form>
+
+      {!state.query && !pending && (
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => submitWithQuery(s)}
+              className="text-xs px-3 py-1.5 rounded-full border border-[color:var(--color-border)] hover:border-[color:var(--color-gold)] hover:text-[color:var(--color-gold)] transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
