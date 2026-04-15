@@ -35,7 +35,12 @@
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://bevtek-web.vercel.app/\")",
       "Bash(curl -s -o /dev/null -w '%{http_code}' https://bevtek-web.vercel.app__TRACKED_VAR__)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://bevtek-web.vercel.app/affiliates\")",
-      "Bash(curl -s \"https://bevtek-web.vercel.app/affiliates\")"
+      "Bash(curl -s \"https://bevtek-web.vercel.app/affiliates\")",
+      "Bash(curl -s \"https://bevtek-web.vercel.app/affiliates\" grep -oE \"\\(Give 10%|Keep 15%|15% forever|MIKE10|10% discount code\\)\" /tmp/aff.html)",
+      "Bash(mkdir -p /tmp/docx-extract)",
+      "Bash(rm -f document.xml)",
+      "Bash(unzip -o -p \"/c/Users/Admin/Desktop/BevTek/BevTek_AI_Pricing_and_Value_Proposition.docx\" word/document.xml)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

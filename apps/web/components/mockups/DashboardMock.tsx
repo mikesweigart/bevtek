@@ -3,7 +3,7 @@ export function DashboardMock() {
   return (
     <div className="h-full flex flex-col">
       <div className="px-4 pt-2 pb-2 border-b border-zinc-100">
-        <p className="text-[9px] text-zinc-500">Good Vibes Liquor</p>
+        <p className="text-[9px] text-zinc-500">Grapes &amp; Grains</p>
         <p className="text-xs font-semibold">Dashboard</p>
       </div>
 

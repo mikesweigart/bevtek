@@ -85,61 +85,71 @@ export default async function TextsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Texting</h1>
         <p className="text-sm text-[color:var(--color-muted)]">
-          iMessage conversations with your customers via Sendblue.
+          iMessage conversations with your customers.
         </p>
       </div>
 
       {migrationMissing && (
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
           Run migration 8 (webhook_rpc) in the Supabase SQL Editor to enable
-          Texting setup.
+          Texting activation.
         </div>
       )}
 
       {consent.length === 0 && !migrationMissing && (
-        <section className="rounded-lg border border-[color:var(--color-border)] p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <span
-              className={`h-2 w-2 rounded-full ${hasSecret ? "bg-amber-500" : "bg-zinc-300"}`}
-            />
-            <h2 className="text-sm font-semibold">
-              {hasSecret
-                ? "Webhook ready · waiting for your first conversation"
-                : "Connect Sendblue"}
-            </h2>
-          </div>
-          <ol className="space-y-3 text-sm text-[color:var(--color-muted)] list-decimal list-inside">
-            <li>
-              Create a Sendblue account at{" "}
-              <a
-                href="https://sendblue.co"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[color:var(--color-gold)] underline"
-              >
-                sendblue.co
-              </a>{" "}
-              and claim an iMessage number.
-            </li>
-            <li>
-              In Sendblue, go to <b>Developers → Webhooks</b> and paste the URL
-              + secret below.
-            </li>
-            <li>
-              We&apos;ll track opt-in / opt-out events here. Full two-way
-              conversation UI is on the roadmap.
-            </li>
-          </ol>
-
-          {isOwner ? (
-            <RotateSecretButton
-              webhookUrl={webhookUrl}
-              initialSecret={s?.sendblue_webhook_secret ?? null}
-            />
-          ) : (
-            <p className="text-xs text-[color:var(--color-muted)]">
-              Only the store owner can view or rotate the webhook secret.
+        <section className="rounded-2xl border-2 border-[color:var(--color-gold)] bg-gradient-to-br from-white to-[#FBF7F0] p-8 space-y-5">
+          <div className="space-y-2">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Done for you
             </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              We&apos;ll get your iMessage number live.
+            </h2>
+            <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
+              Texting is part of your plan (Pro and Elite, or as the SMS
+              follow-ups add-on on Starter). We provision the number, wire up
+              the integrations, and handle TCPA-compliant opt-in/opt-out — you
+              just text your customers.
+            </p>
+          </div>
+          <div className="rounded-lg border border-[color:var(--color-border)] bg-white p-5 space-y-3">
+            <p className="text-sm font-medium">To activate, tell us:</p>
+            <ul className="space-y-1.5 text-sm text-[color:var(--color-muted)]">
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>What area code you want (we provision a dedicated iMessage number)</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>What kinds of messages you want to send (order confirmations, back-in-stock alerts, recommendations)</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>Your existing customer list (optional — we&apos;ll import it with opt-in records)</span>
+              </li>
+            </ul>
+            <a
+              href="mailto:activate@bevtek.ai?subject=Activate%20Megan%20Texting&body=Desired%20area%20code%3A%20%0AWhat%20we%20want%20to%20send%3A%20%0AExisting%20customer%20list%3F%20"
+              className="inline-flex items-center justify-center rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold"
+            >
+              Email activation request
+            </a>
+            <p className="text-xs text-[color:var(--color-muted)]">
+              Turnaround: 24–48 hours. TCPA compliance handled for you.
+            </p>
+          </div>
+          {isOwner && (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
+                Advanced: self-serve webhook setup (for developers)
+              </summary>
+              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4 bg-white">
+                <RotateSecretButton
+                  webhookUrl={webhookUrl}
+                  initialSecret={s?.sendblue_webhook_secret ?? null}
+                />
+              </div>
+            </details>
           )}
         </section>
       )}

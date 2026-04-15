@@ -97,64 +97,72 @@ export default async function CallsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Receptionist</h1>
         <p className="text-sm text-[color:var(--color-muted)]">
-          Inbound phone calls answered by Megan via Retell AI.
+          Inbound phone calls answered by Megan, 24/7.
         </p>
       </div>
 
       {migrationMissing && (
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
           Run migration 8 (webhook_rpc) in the Supabase SQL Editor to enable
-          Receptionist setup.
+          Receptionist activation.
         </div>
       )}
 
       {calls.length === 0 && !migrationMissing && (
-        <section className="rounded-lg border border-[color:var(--color-border)] p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <span
-              className={`h-2 w-2 rounded-full ${hasSecret ? "bg-amber-500" : "bg-zinc-300"}`}
-            />
-            <h2 className="text-sm font-semibold">
-              {hasSecret
-                ? "Webhook ready · waiting for your first call"
-                : "Connect Retell AI"}
-            </h2>
-          </div>
-          <ol className="space-y-3 text-sm text-[color:var(--color-muted)] list-decimal list-inside">
-            <li>
-              Create a Retell AI account at{" "}
-              <a
-                href="https://retellai.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[color:var(--color-gold)] underline"
-              >
-                retellai.com
-              </a>{" "}
-              and build a voice agent for your store.
-            </li>
-            <li>
-              In Retell, go to your agent&apos;s <b>Webhook</b> settings and
-              paste the URL + secret below. Retell sends an event when a call
-              starts and ends — we log them here.
-            </li>
-            <li>
-              Point your store phone number&apos;s incoming calls to your Retell
-              agent (Retell walks you through this).
-            </li>
-            <li>Call the number. Watch this page.</li>
-          </ol>
-
-          {isOwner ? (
-            <RotateSecretButton
-              webhookUrl={webhookUrl}
-              initialSecret={s?.retell_webhook_secret ?? null}
-            />
-          ) : (
-            <p className="text-xs text-[color:var(--color-muted)]">
-              Only the store owner can view or rotate the webhook secret. Ask
-              them to set it up.
+        <section className="rounded-2xl border-2 border-[color:var(--color-gold)] bg-gradient-to-br from-white to-[#FBF7F0] p-8 space-y-5">
+          <div className="space-y-2">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Done for you
             </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              We&apos;ll set up Megan Receptionist for you.
+            </h2>
+            <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
+              Megan Receptionist is included with your plan. We handle every
+              piece of the technical setup — the AI voice agent, the phone
+              number routing, the integrations — so you don&apos;t have to touch
+              a single third-party service.
+            </p>
+          </div>
+          <div className="rounded-lg border border-[color:var(--color-border)] bg-white p-5 space-y-3">
+            <p className="text-sm font-medium">To activate, send us:</p>
+            <ul className="space-y-1.5 text-sm text-[color:var(--color-muted)]">
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>Your store phone number</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>Your regular business hours</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-[color:var(--color-gold)] font-semibold">•</span>
+                <span>Anything you want Megan to specifically say or ask</span>
+              </li>
+            </ul>
+            <a
+              href="mailto:activate@bevtek.ai?subject=Activate%20Megan%20Receptionist&body=Store%20phone%20number%3A%20%0ABusiness%20hours%3A%20%0ASpecial%20instructions%3A%20"
+              className="inline-flex items-center justify-center rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold"
+            >
+              Email activation request
+            </a>
+            <p className="text-xs text-[color:var(--color-muted)]">
+              Turnaround: 24 hours. No setup fee beyond what&apos;s already in
+              your plan.
+            </p>
+          </div>
+          {isOwner && (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-[color:var(--color-muted)] hover:text-[color:var(--color-fg)]">
+                Advanced: self-serve webhook setup (for developers)
+              </summary>
+              <div className="mt-4 rounded-lg border border-[color:var(--color-border)] p-4 bg-white">
+                <RotateSecretButton
+                  webhookUrl={webhookUrl}
+                  initialSecret={s?.retell_webhook_secret ?? null}
+                />
+              </div>
+            </details>
           )}
         </section>
       )}

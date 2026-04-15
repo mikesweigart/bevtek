@@ -10,9 +10,9 @@ export function ShopperMock() {
     <div className="h-full flex flex-col">
       <div className="px-4 pt-2 pb-2 flex items-center gap-2 border-b border-zinc-100">
         <div className="w-7 h-7 rounded bg-[color:var(--color-gold)] flex items-center justify-center text-white text-xs font-semibold">
-          GV
+          G&amp;G
         </div>
-        <span className="text-xs font-semibold">Good Vibes</span>
+        <span className="text-xs font-semibold">Grapes &amp; Grains</span>
       </div>
       <div className="px-3 py-2">
         <div className="rounded-lg bg-zinc-100 h-7 flex items-center px-3 text-[10px] text-zinc-500">

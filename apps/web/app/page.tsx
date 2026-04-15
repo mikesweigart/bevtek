@@ -177,9 +177,17 @@ function Showcase() {
             What Megan looks like.
           </h2>
           <p className="text-[color:var(--color-muted)] leading-relaxed">
-            Mobile-first from day one. Your staff and customers never download
-            an app — just open the link on any phone.
+            Mobile-first from day one. Use it on the web today — native iOS
+            and Android apps launching this summer.
           </p>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <span className="text-[10px] tracking-widest uppercase bg-white border border-[color:var(--color-border)] px-2.5 py-1 rounded-full">
+              Web · Live now
+            </span>
+            <span className="text-[10px] tracking-widest uppercase bg-[color:var(--color-gold)] text-white px-2.5 py-1 rounded-full">
+              iOS + Android · Coming summer 2026
+            </span>
+          </div>
         </div>
         <div className="overflow-x-auto -mx-6 px-6">
           <div className="flex gap-8 justify-start lg:justify-center pb-4 min-w-min">
@@ -312,51 +320,186 @@ function HowItWorks() {
   );
 }
 
+const TIERS = [
+  {
+    name: "Starter",
+    setup: 699,
+    monthly: 399,
+    tagline: "Answer every call, recover lost sales.",
+    features: [
+      "AI phone answering (Receptionist)",
+      "Message routing via text/email",
+      "Basic inventory lookup (weekly updates)",
+      "Megan Trainer for staff",
+      "Up to 3 team members",
+      "Email support",
+    ],
+    cta: "Start free trial",
+    best: "Small shops",
+    highlight: false,
+  },
+  {
+    name: "Pro",
+    setup: 999,
+    monthly: 599,
+    tagline: "The full team experience — most stores pick this.",
+    features: [
+      "Everything in Starter",
+      "Full live inventory integration",
+      "Hold-for-Pickup text alerts",
+      "In-store tablet/kiosk mode",
+      "Megan Shopper storefront",
+      "Megan Assistant (floor AI)",
+      "Weekly performance reports",
+      "Unlimited team members",
+    ],
+    cta: "Start free trial",
+    best: "Stores $1–2.5M revenue",
+    highlight: true,
+  },
+  {
+    name: "Elite",
+    setup: 1499,
+    monthly: 899,
+    tagline: "Multi-store. Custom brand voice. White-glove.",
+    features: [
+      "Everything in Pro",
+      "Multi-store inventory sync",
+      "Custom branded AI voice & tone",
+      "Advanced analytics dashboard",
+      "Dedicated success manager",
+      "Priority 24/7 support",
+      "Quarterly strategy review",
+    ],
+    cta: "Talk to sales",
+    best: "Multi-location / high volume",
+    highlight: false,
+  },
+];
+
+const ADD_ONS = [
+  { name: "Bilingual voice (English/Spanish)", price: 49, desc: "For diverse communities" },
+  { name: "SMS follow-ups", price: 99, desc: "Quotes, orders, holds — boost repeat visits" },
+  { name: "Custom training library", price: 79, desc: "Add your own brand/product modules" },
+  { name: "Call transcription archive", price: 49, desc: "For compliance + insights" },
+];
+
 function Pricing() {
   return (
-    <section className="px-6 py-16 sm:py-20">
-      <div className="max-w-3xl mx-auto text-center space-y-8">
-        <div className="space-y-3">
+    <section id="pricing" className="px-6 py-16 sm:py-20">
+      <div className="max-w-6xl mx-auto space-y-10">
+        <div className="text-center space-y-3 max-w-2xl mx-auto">
           <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
-            Simple pricing
+            Pricing
           </p>
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            One plan. Everything included.
+            Pick your plan. Start free for 14 days.
           </h2>
+          <p className="text-[color:var(--color-muted)] leading-relaxed">
+            Even if Megan captures just 2 extra orders a day, that&apos;s{" "}
+            <span className="font-semibold text-[color:var(--color-fg)]">
+              $2,500/month
+            </span>{" "}
+            in new sales — at any plan below, you&apos;re net ahead.
+          </p>
         </div>
-        <div className="rounded-2xl border-2 border-[color:var(--color-gold)] bg-white p-8 sm:p-10 space-y-6 max-w-xl mx-auto">
-          <div>
+
+        <div className="grid gap-4 md:gap-6 md:grid-cols-3 items-start">
+          {TIERS.map((t) => (
+            <div
+              key={t.name}
+              className={`relative rounded-2xl bg-white p-6 sm:p-7 space-y-5 ${
+                t.highlight
+                  ? "border-2 border-[color:var(--color-gold)] shadow-lg md:-translate-y-2"
+                  : "border border-[color:var(--color-border)]"
+              }`}
+            >
+              {t.highlight && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] tracking-widest uppercase bg-[color:var(--color-gold)] text-white px-3 py-1 rounded-full whitespace-nowrap">
+                  Most popular
+                </span>
+              )}
+              <div>
+                <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+                  {t.name}
+                </p>
+                <p className="text-sm text-[color:var(--color-muted)] mt-1 min-h-[2.5rem]">
+                  {t.tagline}
+                </p>
+              </div>
+              <div>
+                <p className="flex items-baseline gap-1">
+                  <span className="text-4xl font-semibold">
+                    ${t.monthly.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-[color:var(--color-muted)]">
+                    /mo
+                  </span>
+                </p>
+                <p className="text-xs text-[color:var(--color-muted)] mt-1">
+                  ${t.setup.toLocaleString()} one-time setup
+                </p>
+              </div>
+              <Link
+                href={t.name === "Elite" ? "mailto:sales@bevtek.ai" : "/signup"}
+                className={`block w-full rounded-md py-2.5 text-sm font-semibold text-center transition-colors ${
+                  t.highlight
+                    ? "bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white"
+                    : "border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+                }`}
+              >
+                {t.cta}
+              </Link>
+              <ul className="space-y-2 text-sm">
+                {t.features.map((f) => (
+                  <li key={f} className="flex gap-2">
+                    <span className="text-[color:var(--color-gold)] font-semibold">
+                      ✓
+                    </span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)] pt-2 border-t border-[color:var(--color-border)]">
+                Best for: {t.best}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-center text-sm text-[color:var(--color-muted)]">
+          All plans include a 14-day free trial · No credit card required to
+          start · We handle voice + texting setup for you
+        </p>
+
+        {/* Add-ons */}
+        <div className="max-w-4xl mx-auto pt-8 space-y-5">
+          <div className="text-center space-y-1">
             <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
-              Founders pricing
+              Optional add-ons
             </p>
-            <p className="text-5xl font-semibold mt-2">
-              Free<span className="text-2xl text-[color:var(--color-muted)] font-normal"> to start</span>
-            </p>
-            <p className="text-xs text-[color:var(--color-muted)] mt-1">
-              Paid plans coming soon · your rate is locked in when they launch
-            </p>
+            <h3 className="text-xl font-semibold tracking-tight">
+              Supercharge your Megan.
+            </h3>
           </div>
-          <ul className="space-y-2 text-sm text-left">
-            {[
-              "All 5 Megan products",
-              "Unlimited inventory + team members",
-              "Unlimited customer storefront visitors",
-              "Connect Retell AI for voice",
-              "Connect Sendblue for iMessage",
-              "Email support",
-            ].map((x) => (
-              <li key={x} className="flex gap-2">
-                <span className="text-[color:var(--color-gold)] font-semibold">✓</span>
-                <span>{x}</span>
-              </li>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {ADD_ONS.map((a) => (
+              <div
+                key={a.name}
+                className="rounded-lg border border-[color:var(--color-border)] p-4 flex items-center justify-between gap-3"
+              >
+                <div>
+                  <p className="text-sm font-medium">{a.name}</p>
+                  <p className="text-xs text-[color:var(--color-muted)] mt-0.5">
+                    {a.desc}
+                  </p>
+                </div>
+                <p className="text-sm font-semibold whitespace-nowrap text-[color:var(--color-gold)]">
+                  +${a.price}/mo
+                </p>
+              </div>
             ))}
-          </ul>
-          <Link
-            href="/signup"
-            className="block w-full rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white py-3 text-sm font-semibold text-center"
-          >
-            Claim your free account
-          </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -384,12 +527,30 @@ function Guarantee() {
 }
 
 const FAQS = [
-  { q: "How long does setup take?", a: "About 10 minutes from signup to importing your inventory. Connecting Receptionist (Retell AI) and Texting (Sendblue) takes another 15 minutes each, but they're optional." },
-  { q: "Do I need a Retell or Sendblue account?", a: "Only if you want voice calls or iMessage. The other three products (Trainer, Assistant, Shopper) work with zero external services. Pick the features you need." },
-  { q: "What POS systems do you integrate with?", a: "You can upload inventory from any CSV or Excel export. We've tested Square, Lightspeed, and plain spreadsheets. Column detection is automatic." },
-  { q: "Can my whole team use this?", a: "Yes. Invite staff with a single link; they get the floor-side Assistant and Trainer. Managers and owners see more." },
-  { q: "Is there an iOS app?", a: "Not yet — and you don't need one. Megan is mobile-first on the web, so your staff and customers just open a link on any phone. A native iOS/Android app is on the roadmap." },
-  { q: "What does it cost after launch?", a: "We'll publish plans when we move to paid. Founding accounts lock in their rate at signup and never see a price increase while active." },
+  {
+    q: "How long does setup take?",
+    a: "About 10 minutes from signup to importing your inventory. We handle the technical setup for voice and texting — you just tell us your store phone number and we activate Megan within 24 hours.",
+  },
+  {
+    q: "What do I need to enable texting or phone calls?",
+    a: "Nothing on your end beyond telling us your store number and business hours. Voice (Receptionist) and texting are part of your Pro and Elite plans. We provision the AI agent, the iMessage number, and the integrations — you don't touch any third-party services.",
+  },
+  {
+    q: "Is there an iOS or Android app?",
+    a: "Yes — native iOS and Android apps are in development and launching this summer. Until then, Megan works beautifully on the mobile web (no install needed). Everyone on your team just opens a link on their phone; customers use your storefront the same way.",
+  },
+  {
+    q: "What POS systems do you integrate with?",
+    a: "You can upload inventory from any CSV or Excel export. We've tested Square, Lightspeed, and plain spreadsheets. Column detection is automatic. Deep POS integrations (Square, Lightspeed, Clover, BevIntel) are on the Pro and Elite plans.",
+  },
+  {
+    q: "Can my whole team use this?",
+    a: "Yes. Invite staff with a single link; they get the floor-side Assistant and Trainer. Managers and owners see more. Starter includes up to 3 team members; Pro and Elite are unlimited.",
+  },
+  {
+    q: "What's the free trial?",
+    a: "14 days. All Pro features enabled. No credit card to start. Cancel any time with one click.",
+  },
 ];
 
 function FAQ() {

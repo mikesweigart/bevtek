@@ -27,7 +27,7 @@ export function StoreForm() {
         <input
           name="store_name"
           required
-          placeholder="Good Vibes Liquor"
+          placeholder="Grapes &amp; Grains"
           className={inputCls}
         />
       </label>
