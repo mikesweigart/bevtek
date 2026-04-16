@@ -45,7 +45,10 @@
       "Bash(sleep 1.9 curl -s \"https://bevtek-web.vercel.app/\" wc -c /tmp/home.html grep -oE \"\\(Starter|Elite|\\\\\\\\\\\\$399|\\\\\\\\\\\\$599|Grapes|Most popular|summer\\)\" /tmp/home.html)",
       "WebFetch(domain:claude.ai)",
       "Bash(grep -c \"Pro Plus\\\\|\\\\$249\\\\|Most popular\" /tmp/h.html)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(npx --yes create-expo-app@latest apps/mobile --template blank-typescript --no-install)",
+      "Bash(export PATH=\"/c/Users/Admin/AppData/Roaming/npm:/c/Program Files/nodejs:$PATH\" cd \"/c/Users/Admin/Desktop/BevTek\")",
+      "Bash(npx expo:*)"
     ]
   }
 }

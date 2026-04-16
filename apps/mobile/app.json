@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "BevTek",
+    "slug": "bevtek",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#ffffff",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.bevtek.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "ai.bevtek.app"
+    },
+    "scheme": "bevtek",
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}
