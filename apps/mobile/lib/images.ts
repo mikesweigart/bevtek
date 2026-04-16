@@ -131,6 +131,21 @@ export const MODULE_IMAGES: Record<string, string> = {
   "Inventory Basics for Staff": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
   "Legal: Age Verification & Compliance": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
   "Store Safety & Loss Prevention": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+
+  // Final 15 modules
+  "Pinot Noir — A Global Tour": `${U}/photo-1474722883778-792e7990302f?w=200&q=80`,
+  "Sauvignon Blanc Around the World": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "Cabernet Sauvignon — A Global Tour": `${U}/photo-1510812431401-41d2bd2722f3?w=200&q=80`,
+  "Merlot — The Comeback": `${U}/photo-1474722883778-792e7990302f?w=200&q=80`,
+  "Rosé — Year-Round, Not Just Summer": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
+  "German & Alsatian Riesling": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "Wine Regions of Spain Beyond Rioja": `${U}/photo-1566995541428-f05db4c4f829?w=200&q=80`,
+  "Wine & Cheese Pairing": `${U}/photo-1414235077428-338989a2e8c0?w=200&q=80`,
+  "Bourbon Deep-Dive — Mash Bills & Flavor": `${U}/photo-1569529465841-dfecdab7503b?w=200&q=80`,
+  "Scotch — Peated vs. Unpeated": `${U}/photo-1602076712092-60e16b0b3e09?w=200&q=80`,
+  "Bourbon Cocktails — Beyond the Old Fashioned": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "World Whiskey — Canada, India, Taiwan": `${U}/photo-1527281400683-1aae777175f8?w=200&q=80`,
+  "Home Bar Essentials": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
 };
 
 // Fallback per category group
