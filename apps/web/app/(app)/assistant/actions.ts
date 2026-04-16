@@ -52,24 +52,36 @@ export async function askAction(
     return { error: null, query: q, results: [] };
   }
 
-  // Build OR filter across name/brand/category for each keyword.
-  const clauses = keywords
-    .flatMap((k) => [
-      `name.ilike.%${k}%`,
-      `brand.ilike.%${k}%`,
-      `category.ilike.%${k}%`,
-    ])
-    .join(",");
+  // Try fuzzy search (pg_trgm) first; fall back to keyword ilike if the
+  // RPC doesn't exist (migration 15 not yet applied).
+  let results: AssistantState["results"] = [];
+  const fuzzy = await supabase.rpc("fuzzy_search_inventory", {
+    p_query: q,
+    p_limit: 20,
+  });
 
-  const { data: items } = (await supabase
-    .from("inventory")
-    .select("id, name, brand, category, price, stock_qty, sku")
-    .or(clauses)
-    .eq("is_active", true)
-    .order("stock_qty", { ascending: false })
-    .limit(20)) as { data: AssistantState["results"] | null };
+  if (!fuzzy.error && fuzzy.data) {
+    results = (fuzzy.data as AssistantState["results"]) ?? [];
+  } else {
+    // Fallback: keyword-based ilike search.
+    const clauses = keywords
+      .flatMap((k) => [
+        `name.ilike.%${k}%`,
+        `brand.ilike.%${k}%`,
+        `category.ilike.%${k}%`,
+      ])
+      .join(",");
 
-  const results = items ?? [];
+    const { data: items } = (await supabase
+      .from("inventory")
+      .select("id, name, brand, category, price, stock_qty, sku")
+      .or(clauses)
+      .eq("is_active", true)
+      .order("stock_qty", { ascending: false })
+      .limit(20)) as { data: AssistantState["results"] | null };
+
+    results = items ?? [];
+  }
 
   // Log the query with matching ids.
   const { data: profile } = await supabase
