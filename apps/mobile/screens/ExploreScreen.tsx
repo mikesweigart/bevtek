@@ -4,10 +4,31 @@ import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { CATEGORY_BADGES } from "../lib/levels";
 import { ListenButton } from "../components/ListenButton";
+import { StoreProducts } from "../components/StoreProducts";
 import { getModuleImage } from "../lib/images";
 
 type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
 type Progress = { module_id: string; status: string; stars_earned: number };
+
+/** Extract search keywords from a module title + category for inventory matching */
+function extractSearchTerms(title: string, categoryGroup: string | null): string[] {
+  const SKIP = new Set(["the", "a", "an", "to", "and", "of", "for", "vs", "how", "around", "beyond", "guide", "basics", "essentials", "101", "family"]);
+  const words = title
+    .replace(/[—–\-]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3 && !SKIP.has(w.toLowerCase()))
+    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""));
+  const catTerms: Record<string, string[]> = {
+    wine_france: ["wine", "french"],
+    wine_usa: ["wine", "california", "oregon"],
+    wine_world: ["wine"],
+    spirits: ["whiskey", "bourbon", "scotch", "gin", "rum", "vodka", "tequila"],
+    beer: ["beer", "ipa", "ale", "lager", "stout"],
+    cocktails: ["cocktail"],
+    cocktail_recipes: ["cocktail"],
+  };
+  return [...new Set([...words, ...(catTerms[categoryGroup ?? ""] ?? [])])].slice(0, 6);
+}
 
 export default function ExploreScreen() {
   const [modules, setModules] = useState<Module[]>([]);
@@ -96,7 +117,13 @@ export default function ExploreScreen() {
           <ListenButton text={content} title={selected.title} />
         )}
 
-        <Text style={{ fontSize: 14, lineHeight: 22, marginBottom: 32 }}>{content}</Text>
+        <Text style={{ fontSize: 14, lineHeight: 22, marginBottom: 24 }}>{content}</Text>
+
+        {/* Dynamic products from the store's inventory */}
+        <StoreProducts
+          keywords={extractSearchTerms(selected.title, selected.category_group)}
+          title="From your store"
+        />
 
         {result ? (
           <View style={{ borderWidth: 2, borderColor: result.passed ? colors.gold : colors.border, borderRadius: 16, padding: 24, alignItems: "center", marginBottom: 24 }}>
