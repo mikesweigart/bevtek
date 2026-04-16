@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Image, R
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { CATEGORY_BADGES } from "../lib/levels";
+import { ListenButton } from "../components/ListenButton";
 import { getModuleImage } from "../lib/images";
 
 type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
@@ -89,6 +90,12 @@ export default function ExploreScreen() {
         <Image source={{ uri: img }} style={{ width: "100%", height: 200, borderRadius: 16, marginBottom: 16, backgroundColor: "#F3F4F6" }} resizeMode="cover" />
         <Text style={{ fontSize: 26, fontWeight: "700", marginBottom: 8 }}>{selected.title}</Text>
         {selected.description && <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 16 }}>{selected.description}</Text>}
+
+        {/* Read or Listen toggle */}
+        {content.length > 0 && (
+          <ListenButton text={content} title={selected.title} />
+        )}
+
         <Text style={{ fontSize: 14, lineHeight: 22, marginBottom: 32 }}>{content}</Text>
 
         {result ? (
