@@ -22,7 +22,7 @@ create or replace function public.create_affiliate_for_current_user(
 ) returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id      uuid := auth.uid();
@@ -44,7 +44,7 @@ begin
   -- Referral code: lowercase 8-char random (URL-friendly).
   loop
     v_referral := lower(
-      substr(replace(replace(encode(gen_random_bytes(6), 'base64'), '/', ''), '+', ''), 1, 8)
+      substr(replace(replace(encode(extensions.gen_random_bytes(6), 'base64'), '/', ''), '+', ''), 1, 8)
     );
     exit when not exists (select 1 from public.affiliates where referral_code = v_referral);
   end loop;

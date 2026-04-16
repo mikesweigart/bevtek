@@ -35,7 +35,7 @@ create or replace function public.webhook_log_call(
 ) returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_store_id uuid;
@@ -96,7 +96,7 @@ create or replace function public.webhook_log_sms(
 ) returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_store_id uuid;
@@ -134,7 +134,7 @@ grant execute on function public.webhook_log_sms(text, text, boolean, text, json
 -- ---------------------------------------------------------------------------
 
 create or replace function public.rotate_receptionist_secret()
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_user_id uuid := auth.uid();
   v_store_id uuid;
@@ -144,7 +144,7 @@ begin
   if v_user_id is null then raise exception 'not authenticated'; end if;
   select store_id, role into v_store_id, v_role from public.users where id = v_user_id;
   if v_role <> 'owner' then raise exception 'only owner'; end if;
-  v_secret := replace(replace(encode(gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
+  v_secret := replace(replace(encode(extensions.gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
   update public.stores set retell_webhook_secret = v_secret where id = v_store_id;
   return v_secret;
 end;
@@ -152,7 +152,7 @@ $$;
 grant execute on function public.rotate_receptionist_secret() to authenticated;
 
 create or replace function public.rotate_texting_secret()
-returns text language plpgsql security definer set search_path = public as $$
+returns text language plpgsql security definer set search_path = public, extensions as $$
 declare
   v_user_id uuid := auth.uid();
   v_store_id uuid;
@@ -162,7 +162,7 @@ begin
   if v_user_id is null then raise exception 'not authenticated'; end if;
   select store_id, role into v_store_id, v_role from public.users where id = v_user_id;
   if v_role <> 'owner' then raise exception 'only owner'; end if;
-  v_secret := replace(replace(encode(gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
+  v_secret := replace(replace(encode(extensions.gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
   update public.stores set sendblue_webhook_secret = v_secret where id = v_store_id;
   return v_secret;
 end;

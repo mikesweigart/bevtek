@@ -73,7 +73,7 @@ create or replace function public.create_affiliate_for_current_user(
 ) returns text   -- returns the generated referral code
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -93,7 +93,7 @@ begin
   -- Generate a short readable code, unique.
   loop
     v_code := lower(
-      substr(replace(replace(encode(gen_random_bytes(6), 'base64'), '/', ''), '+', ''), 1, 8)
+      substr(replace(replace(encode(extensions.gen_random_bytes(6), 'base64'), '/', ''), '+', ''), 1, 8)
     );
     exit when not exists (select 1 from public.affiliates where referral_code = v_code);
   end loop;
@@ -118,7 +118,7 @@ create or replace function public.log_affiliate_click(
 ) returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   -- Only log if the code exists.

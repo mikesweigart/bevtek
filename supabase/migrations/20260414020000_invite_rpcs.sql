@@ -18,7 +18,7 @@ create function public.create_invite(
 ) returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id  uuid := auth.uid();
@@ -52,7 +52,7 @@ begin
   end if;
 
   -- Random 32-char URL-safe token.
-  v_token := replace(replace(encode(gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
+  v_token := replace(replace(encode(extensions.gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
 
   insert into public.invites (store_id, email, role, token, invited_by, expires_at)
   values (v_store_id, lower(trim(p_email)), p_role, v_token, v_user_id, v_expires)
