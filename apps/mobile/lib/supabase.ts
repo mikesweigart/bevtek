@@ -1,4 +1,4 @@
-import "react-native-url-polyfill/dist/url-shim";
+// URL polyfill not needed — React Native 0.77+ has native URL support.
 import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 
