@@ -7,10 +7,15 @@
 -- create_invite
 -- ---------------------------------------------------------------------------
 
-create or replace function public.create_invite(
+-- Returns json (not TABLE) to avoid an "id is ambiguous" planner error
+-- that crops up when the OUT column name `id` collides with `invites.id`
+-- in the RETURNING clause.
+drop function if exists public.create_invite(text, text);
+
+create function public.create_invite(
   p_email text,
   p_role  text default 'staff'
-) returns table (id uuid, token text, expires_at timestamptz)
+) returns json
 language plpgsql
 security definer
 set search_path = public
@@ -21,6 +26,7 @@ declare
   v_role     text;
   v_token    text;
   v_expires  timestamptz := now() + interval '14 days';
+  v_id       uuid;
 begin
   if v_user_id is null then
     raise exception 'not authenticated' using errcode = '42501';
@@ -48,10 +54,15 @@ begin
   -- Random 32-char URL-safe token.
   v_token := replace(replace(encode(gen_random_bytes(24), 'base64'), '/', '_'), '+', '-');
 
-  return query
   insert into public.invites (store_id, email, role, token, invited_by, expires_at)
   values (v_store_id, lower(trim(p_email)), p_role, v_token, v_user_id, v_expires)
-  returning invites.id, invites.token, invites.expires_at;
+  returning id into v_id;
+
+  return json_build_object(
+    'id', v_id,
+    'token', v_token,
+    'expires_at', v_expires
+  );
 end;
 $$;
 
