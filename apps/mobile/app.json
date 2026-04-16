@@ -22,6 +22,6 @@
       "package": "ai.bevtek.app"
     },
     "scheme": "bevtek",
-    "plugins": ["expo-router", "expo-secure-store"]
+    "plugins": ["expo-secure-store"]
   }
 }

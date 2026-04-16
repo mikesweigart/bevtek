@@ -1,42 +1,24 @@
 import { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  Image,
-  Dimensions,
-  FlatList,
-} from "react-native";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../lib/auth";
-import { colors } from "../../lib/theme";
-import { levelForStars, CATEGORY_BADGES } from "../../lib/levels";
-import { getModuleImage } from "../../lib/images";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Dimensions, FlatList } from "react-native";
+import { supabase } from "../lib/supabase";
+import { colors } from "../lib/theme";
+import { levelForStars, CATEGORY_BADGES } from "../lib/levels";
+import { getModuleImage } from "../lib/images";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W * 0.6;
 
-type Module = {
-  id: string;
-  title: string;
-  description: string | null;
-  category_group: string | null;
-  star_reward: number;
-  duration_minutes: number | null;
-};
+type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
 type Progress = { module_id: string; status: string; stars_earned: number };
-type Game = { total_stars: number; current_streak_days: number };
 
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const [game, setGame] = useState<Game>({ total_stars: 0, current_streak_days: 0 });
+  const [game, setGame] = useState({ total_stars: 0, current_streak_days: 0 });
   const [modules, setModules] = useState<Module[]>([]);
   const [progress, setProgress] = useState<Map<string, Progress>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const [gameRes, modRes, progRes] = await Promise.all([
       supabase.from("user_gamification").select("total_stars, current_streak_days").eq("id", user.id).maybeSingle(),
@@ -48,27 +30,22 @@ export default function HomeScreen() {
     const map = new Map<string, Progress>();
     for (const p of (progRes.data as Progress[]) ?? []) map.set(p.module_id, p);
     setProgress(map);
-  }, [user]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const level = levelForStars(game.total_stars);
   const completedCount = Array.from(progress.values()).filter((p) => p.status === "completed").length;
   const featured = modules.slice(0, 8);
-  const inProgress = modules.filter((m) => progress.get(m.id)?.status === "in_progress");
   const categories = Array.from(new Set(modules.map((m) => m.category_group).filter(Boolean))) as string[];
 
   return (
-    <ScrollView
-      style={s.container}
-      contentContainerStyle={s.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.gold} />}
-    >
+    <ScrollView style={s.container} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.gold} />}>
+
       <View style={s.header}>
-        <View>
-          <Text style={s.brand}>MeganTrainer</Text>
-          <Text style={s.brandSub}>POWERED BY BEVTEK.AI</Text>
-        </View>
+        <Text style={s.brand}>MeganTrainer</Text>
+        <Text style={s.brandSub}>POWERED BY BEVTEK.AI</Text>
       </View>
 
       <View style={s.levelCard}>
@@ -77,15 +54,11 @@ export default function HomeScreen() {
             <Text style={s.levelLabel}>Level {level.index + 1}</Text>
             <Text style={s.levelName}>{level.name}</Text>
           </View>
-          <View style={s.starsChip}>
-            <Text style={s.starsText}>⭐ {game.total_stars}</Text>
-          </View>
+          <View style={s.starsChip}><Text style={s.starsText}>⭐ {game.total_stars}</Text></View>
         </View>
         <Text style={s.levelSub}>{completedCount} module{completedCount === 1 ? "" : "s"} completed</Text>
         {level.nextMinStars !== null && (
-          <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: `${Math.round(level.progressToNext * 100)}%` }]} />
-          </View>
+          <View style={s.progressBar}><View style={[s.progressFill, { width: `${Math.round(level.progressToNext * 100)}%` }]} /></View>
         )}
       </View>
 
@@ -93,15 +66,12 @@ export default function HomeScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Categories</Text>
           <View style={s.chipRow}>
-            {categories.map((cat) => {
-              const badge = CATEGORY_BADGES[cat];
-              return (
-                <View key={cat} style={[s.chip, { borderColor: colors.gold }]}>
-                  <View style={[s.chipDot, { backgroundColor: colors.gold }]} />
-                  <Text style={s.chipLabel}>{badge?.label ?? cat}</Text>
-                </View>
-              );
-            })}
+            {categories.map((cat) => (
+              <View key={cat} style={[s.chip, { borderColor: colors.gold }]}>
+                <View style={[s.chipDot, { backgroundColor: colors.gold }]} />
+                <Text style={s.chipLabel}>{CATEGORY_BADGES[cat]?.label ?? cat}</Text>
+              </View>
+            ))}
           </View>
         </View>
       )}
@@ -111,37 +81,20 @@ export default function HomeScreen() {
           <Text style={s.sectionTitle}>Featured Modules</Text>
           <Text style={s.sectionCount}>{featured.length}</Text>
         </View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={featured}
-          keyExtractor={(m) => m.id}
+        <FlatList horizontal showsHorizontalScrollIndicator={false} data={featured} keyExtractor={(m) => m.id}
           contentContainerStyle={{ paddingRight: 20 }}
           renderItem={({ item: m }) => {
-            const pr = progress.get(m.id);
-            const done = pr?.status === "completed";
+            const done = progress.get(m.id)?.status === "completed";
             const badge = CATEGORY_BADGES[m.category_group ?? "spirits"];
             const img = getModuleImage(m.title, m.category_group);
             return (
               <View style={s.featCard}>
                 <Image source={{ uri: img }} style={s.featImage} resizeMode="cover" />
                 <View style={s.featOverlay}>
-                  {badge && (
-                    <View style={[s.catBadge, { backgroundColor: badge.bg }]}>
-                      <Text style={[s.catBadgeText, { color: badge.color }]}>{badge.label}</Text>
-                    </View>
-                  )}
-                  {m.duration_minutes && (
-                    <View style={s.durBadge}>
-                      <Text style={s.durText}>⏱ {m.duration_minutes} min</Text>
-                    </View>
-                  )}
+                  {badge && <View style={[s.catBadge, { backgroundColor: badge.bg }]}><Text style={[s.catBadgeText, { color: badge.color }]}>{badge.label}</Text></View>}
+                  {m.duration_minutes && <View style={s.durBadge}><Text style={s.durText}>⏱ {m.duration_minutes} min</Text></View>}
                 </View>
-                {done && (
-                  <View style={s.doneBadge}>
-                    <Text style={s.doneText}>⭐ Done</Text>
-                  </View>
-                )}
+                {done && <View style={s.doneBadge}><Text style={s.doneText}>⭐ Done</Text></View>}
                 <View style={s.featInfo}>
                   <Text style={s.featTitle} numberOfLines={1}>{m.title}</Text>
                   {m.description && <Text style={s.featDesc} numberOfLines={1}>{m.description}</Text>}
@@ -152,35 +105,9 @@ export default function HomeScreen() {
         />
       </View>
 
-      {inProgress.length > 0 && (
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Continue Learning</Text>
-            <Text style={s.sectionCount}>{inProgress.length}</Text>
-          </View>
-          {inProgress.map((m) => {
-            const img = getModuleImage(m.title, m.category_group);
-            const badge = CATEGORY_BADGES[m.category_group ?? "spirits"];
-            return (
-              <View key={m.id} style={s.contRow}>
-                <Image source={{ uri: img }} style={s.contThumb} resizeMode="cover" />
-                <View style={{ flex: 1 }}>
-                  {badge && <Text style={[s.contCat, { color: badge.color }]}>{badge.label}</Text>}
-                  <Text style={s.contTitle} numberOfLines={1}>{m.title}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
       {game.current_streak_days > 0 && (
-        <View style={s.streakCard}>
-          <Text style={s.streakIcon}>🔥</Text>
-          <Text style={s.streakText}>{game.current_streak_days} day streak — keep it going!</Text>
-        </View>
+        <View style={s.streakCard}><Text style={s.streakIcon}>🔥</Text><Text style={s.streakText}>{game.current_streak_days} day streak — keep it going!</Text></View>
       )}
-
       <View style={{ height: 32 }} />
     </ScrollView>
   );
@@ -189,7 +116,7 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: 20, paddingTop: 60 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
+  header: { marginBottom: 20 },
   brand: { fontSize: 24, fontWeight: "700", letterSpacing: -0.3 },
   brandSub: { fontSize: 10, letterSpacing: 2, color: colors.muted, marginTop: 2 },
   levelCard: { borderWidth: 2, borderColor: colors.gold, borderRadius: 16, padding: 18, marginBottom: 24, backgroundColor: "#FBF7F0" },
@@ -200,7 +127,7 @@ const s = StyleSheet.create({
   starsText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   levelSub: { fontSize: 12, color: colors.muted, marginTop: 8 },
   progressBar: { height: 5, backgroundColor: "#E5E7EB", borderRadius: 3, marginTop: 10, overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: colors.gold, borderRadius: 3 },
+  progressFill: { height: "100%" as any, backgroundColor: colors.gold, borderRadius: 3 },
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: "700" },
@@ -221,10 +148,6 @@ const s = StyleSheet.create({
   featInfo: { padding: 12 },
   featTitle: { fontSize: 15, fontWeight: "700" },
   featDesc: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  contRow: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, marginBottom: 8 },
-  contThumb: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#F3F4F6" },
-  contCat: { fontSize: 9, fontWeight: "700", letterSpacing: 1 },
-  contTitle: { fontSize: 14, fontWeight: "600", marginTop: 2 },
   streakCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FBF7F0", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold },
   streakIcon: { fontSize: 20 },
   streakText: { fontSize: 13, fontWeight: "600", color: colors.gold },
