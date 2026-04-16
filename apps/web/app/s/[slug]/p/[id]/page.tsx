@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/utils/supabase/server";
 import { ProductImage } from "@/components/ProductImage";
+import { HoldButton } from "./HoldButton";
 
 export async function generateMetadata({
   params,
@@ -159,6 +160,16 @@ export default async function ProductPage({
               {inStock ? "In stock" : "Out of stock"}
             </span>
           </div>
+
+          {inStock && (
+            <div className="pt-2">
+              <HoldButton
+                storeSlug={slug}
+                itemId={item.id}
+                itemName={item.name}
+              />
+            </div>
+          )}
         </div>
       </div>
 
