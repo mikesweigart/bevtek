@@ -51,7 +51,7 @@ export function InviteForm({ origin }: { origin: string }) {
             disabled={pending}
             className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-4 text-sm font-medium disabled:opacity-60"
           >
-            {pending ? "Sending…" : "Send invite"}
+            {pending ? "SENDING…" : "SEND INVITE"}
           </button>
         </div>
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
