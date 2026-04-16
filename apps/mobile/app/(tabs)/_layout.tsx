@@ -10,17 +10,22 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.bg,
           borderTopColor: colors.border,
+          height: 84,
+          paddingBottom: 28,
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "500",
         },
         headerStyle: {
           backgroundColor: colors.bg,
-          borderBottomColor: colors.border,
-          borderBottomWidth: 1,
           shadowOpacity: 0,
           elevation: 0,
         },
         headerTitleStyle: {
-          fontWeight: "600",
-          fontSize: 16,
+          fontWeight: "700",
+          fontSize: 22,
           color: colors.fg,
         },
       }}
@@ -30,20 +35,21 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarLabel: "Home",
+          headerShown: false,
         }}
       />
       <Tabs.Screen
-        name="trainer"
+        name="explore"
         options={{
-          title: "Trainer",
-          tabBarLabel: "Trainer",
+          title: "Explore",
+          tabBarLabel: "Explore",
         }}
       />
       <Tabs.Screen
-        name="assistant"
+        name="leaderboard"
         options={{
-          title: "Assistant",
-          tabBarLabel: "Ask Megan",
+          title: "Leaderboard",
+          tabBarLabel: "Leaderboard",
         }}
       />
       <Tabs.Screen
