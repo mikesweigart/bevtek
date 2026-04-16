@@ -28,7 +28,7 @@ export function InviteForm({ origin }: { origin: string }) {
       <div>
         <h2 className="text-sm font-semibold">Invite teammate</h2>
         <p className="text-xs text-[color:var(--color-muted)]">
-          Generate a link — send it however you like.
+          We&apos;ll email them an invitation with a link to join.
         </p>
       </div>
       <form action={action} className="space-y-3">
@@ -51,7 +51,7 @@ export function InviteForm({ origin }: { origin: string }) {
             disabled={pending}
             className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-4 text-sm font-medium disabled:opacity-60"
           >
-            {pending ? "Creating…" : "Create invite"}
+            {pending ? "Sending…" : "Send invite"}
           </button>
         </div>
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
