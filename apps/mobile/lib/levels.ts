@@ -50,5 +50,7 @@ export const CATEGORY_BADGES: Record<
   spirits: { label: "SPIRITS", color: "#78350F", bg: "#FDE68A" },
   beer: { label: "BEER", color: "#3F6212", bg: "#ECFCCB" },
   cocktails: { label: "COCKTAILS", color: "#9A3412", bg: "#FFEDD5" },
+  cocktail_recipes: { label: "RECIPES", color: "#9A3412", bg: "#FFEDD5" },
+  sales_service: { label: "SALES", color: "#1E40AF", bg: "#DBEAFE" },
   custom: { label: "CUSTOM", color: "#6B7280", bg: "#F3F4F6" },
 };

@@ -11,9 +11,9 @@ export type LevelInfo = {
 
 const LEVELS: ReadonlyArray<{ name: string; minStars: number }> = [
   { name: "Newcomer", minStars: 0 },
-  { name: "Apprentice", minStars: 10 },
-  { name: "Sommelier", minStars: 30 },
-  { name: "Expert", minStars: 60 },
+  { name: "Bronze Trainer", minStars: 10 },
+  { name: "Silver Trainer", minStars: 30 },
+  { name: "Gold Trainer", minStars: 60 },
   { name: "Elite", minStars: 100 },
 ];
 
@@ -63,6 +63,16 @@ export const CATEGORY_GROUPS: Record<
   spirits: { label: "Spirits", shortLabel: "Spirits", color: "#C8984E" },
   beer: { label: "Beer", shortLabel: "Beer", color: "#C8984E" },
   cocktails: { label: "Cocktails", shortLabel: "Cocktails", color: "#C8984E" },
+  cocktail_recipes: {
+    label: "Cocktail Recipes",
+    shortLabel: "Recipes",
+    color: "#C8984E",
+  },
+  sales_service: {
+    label: "Sales & Service",
+    shortLabel: "Sales",
+    color: "#C8984E",
+  },
   custom: { label: "Your Store", shortLabel: "Custom", color: "#6B7280" },
 };
 
@@ -73,5 +83,7 @@ export const CATEGORY_ORDER = [
   "spirits",
   "beer",
   "cocktails",
+  "cocktail_recipes",
+  "sales_service",
   "custom",
 ];

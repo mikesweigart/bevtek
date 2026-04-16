@@ -5,12 +5,14 @@ const U = "https://images.unsplash.com";
 
 // Category hero images (used in Featured Modules carousel)
 export const CATEGORY_IMAGES: Record<string, string> = {
-  wine_france: `${U}/photo-1510812431401-41d2bd2722f3?w=600&q=80`, // red wine glasses
-  wine_usa: `${U}/photo-1506377247377-2a5b3b417ebb?w=600&q=80`, // napa vineyard
-  wine_world: `${U}/photo-1553361371-9b22f78e8b1d?w=600&q=80`, // wine barrels
-  spirits: `${U}/photo-1569529465841-dfecdab7503b?w=600&q=80`, // bourbon bottles
-  beer: `${U}/photo-1535958636474-b021ee887b13?w=600&q=80`, // craft beer flight
-  cocktails: `${U}/photo-1514362545857-3bc16c4c7d1b?w=600&q=80`, // cocktail bar
+  wine_france: `${U}/photo-1510812431401-41d2bd2722f3?w=600&q=80`,
+  wine_usa: `${U}/photo-1506377247377-2a5b3b417ebb?w=600&q=80`,
+  wine_world: `${U}/photo-1553361371-9b22f78e8b1d?w=600&q=80`,
+  spirits: `${U}/photo-1569529465841-dfecdab7503b?w=600&q=80`,
+  beer: `${U}/photo-1535958636474-b021ee887b13?w=600&q=80`,
+  cocktails: `${U}/photo-1514362545857-3bc16c4c7d1b?w=600&q=80`,
+  cocktail_recipes: `${U}/photo-1514362545857-3bc16c4c7d1b?w=600&q=80`,
+  sales_service: `${U}/photo-1556742049-0cfed4f6a45d?w=600&q=80`,
 };
 
 // Per-module images (circular thumbnails on Explore)
@@ -70,6 +72,65 @@ export const MODULE_IMAGES: Record<string, string> = {
   "Aperitivo & Spritzes": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
   "Classic Highballs": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
   "Food & Drink Pairings": `${U}/photo-1414235077428-338989a2e8c0?w=200&q=80`,
+
+  // Cocktail recipes (15)
+  "Margarita": `${U}/photo-1516535794938-6063878f08cc?w=200&q=80`,
+  "Espresso Martini": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Moscow Mule": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Mojito": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
+  "Daiquiri": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Manhattan": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Cosmopolitan": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
+  "French 75": `${U}/photo-1549439602-43ebca2327af?w=200&q=80`,
+  "Mai Tai": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Paloma": `${U}/photo-1516535794938-6063878f08cc?w=200&q=80`,
+  "Piña Colada": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
+  "Negroni": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Aperol Spritz": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
+  "Whiskey Sour": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Tom Collins": `${U}/photo-1550391327-1f4ff5c42e81?w=200&q=80`,
+
+  // Wine expanded
+  "Australian Chardonnay": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "New Zealand Sauvignon Blanc": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "South African Wine": `${U}/photo-1553361371-9b22f78e8b1d?w=200&q=80`,
+  "California Reds Deep-Dive": `${U}/photo-1510812431401-41d2bd2722f3?w=200&q=80`,
+  "California Whites Deep-Dive": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "Oregon Whites": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "Italian Reds — Chianti to Amarone": `${U}/photo-1474722883778-792e7990302f?w=200&q=80`,
+  "Italian Whites — Pinot Grigio to Vermentino": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "How to Read a Wine Label": `${U}/photo-1553361371-9b22f78e8b1d?w=200&q=80`,
+  "Wine Storage & Serving Temperature": `${U}/photo-1553361371-9b22f78e8b1d?w=200&q=80`,
+  "Wine for Beginners": `${U}/photo-1510812431401-41d2bd2722f3?w=200&q=80`,
+  "Dessert Wines — Port, Sauternes & Ice Wine": `${U}/photo-1510812431401-41d2bd2722f3?w=200&q=80`,
+
+  // Whiskey expanded
+  "Tennessee Whiskey": `${U}/photo-1569529465841-dfecdab7503b?w=200&q=80`,
+  "Wheat Whiskey & Specialty Grains": `${U}/photo-1527281400683-1aae777175f8?w=200&q=80`,
+  "Whiskey Blends & Budget Guide": `${U}/photo-1569529465841-dfecdab7503b?w=200&q=80`,
+  "Whiskey Cocktails at Home": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+
+  // Beer expanded
+  "Craft Beer for Beginners": `${U}/photo-1535958636474-b021ee887b13?w=200&q=80`,
+  "Beer & Food Pairing": `${U}/photo-1414235077428-338989a2e8c0?w=200&q=80`,
+  "Non-Alcoholic Beer & Beverages": `${U}/photo-1535958636474-b021ee887b13?w=200&q=80`,
+
+  // Spirits expanded
+  "Non-Alcoholic Spirits": `${U}/photo-1550391327-1f4ff5c42e81?w=200&q=80`,
+  "Ready-to-Drink (RTD) Guide": `${U}/photo-1535958636474-b021ee887b13?w=200&q=80`,
+  "Agave Beyond Tequila": `${U}/photo-1516535794938-6063878f08cc?w=200&q=80`,
+
+  // Sales & Service
+  "Upselling Without Being Pushy": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Reading the Customer": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Gift Recommendations by Budget": `${U}/photo-1549465220-1a8b9238f7e7?w=200&q=80`,
+  "Holiday Season Playbook": `${U}/photo-1549465220-1a8b9238f7e7?w=200&q=80`,
+  "Wine Club & Loyalty Programs": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Handling Difficult Customers": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Merchandising & Shelf Placement": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Inventory Basics for Staff": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Legal: Age Verification & Compliance": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
+  "Store Safety & Loss Prevention": `${U}/photo-1556742049-0cfed4f6a45d?w=200&q=80`,
 };
 
 // Fallback per category group
