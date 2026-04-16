@@ -45,5 +45,5 @@ export async function createStoreAction(
 
   if (error) return { error: error.message };
 
-  redirect("/dashboard");
+  redirect("/onboarding/logo");
 }
