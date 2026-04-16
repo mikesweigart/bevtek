@@ -43,6 +43,7 @@ export async function createModuleAction(
       title,
       description: description || null,
       category: category || null,
+      category_group: "custom",
       duration_minutes: Number.isFinite(duration) ? duration : null,
       content: { body },
       is_published: publish,
