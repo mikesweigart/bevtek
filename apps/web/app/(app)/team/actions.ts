@@ -8,6 +8,7 @@ export type InviteState = {
   error: string | null;
   link: string | null;
   emailSent: boolean;
+  emailError: string | null;
 };
 
 export async function createInviteAction(
@@ -18,9 +19,9 @@ export async function createInviteAction(
   const role = String(formData.get("role") ?? "staff");
   const origin = String(formData.get("origin") ?? "");
 
-  if (!email) return { error: "Email is required.", link: null, emailSent: false };
+  if (!email) return { error: "Email is required.", link: null, emailSent: false, emailError: null };
   if (!["owner", "manager", "staff"].includes(role)) {
-    return { error: "Invalid role.", link: null, emailSent: false };
+    return { error: "Invalid role.", link: null, emailSent: false, emailError: null };
   }
 
   const supabase = await createClient();
@@ -29,11 +30,11 @@ export async function createInviteAction(
     p_role: role,
   });
 
-  if (error) return { error: error.message, link: null, emailSent: false };
+  if (error) return { error: error.message, link: null, emailSent: false, emailError: null };
 
   const row = Array.isArray(data) ? data[0] : data;
   const token = row?.token as string | undefined;
-  if (!token) return { error: "No token returned.", link: null, emailSent: false };
+  if (!token) return { error: "No token returned.", link: null, emailSent: false, emailError: null };
 
   const inviteUrl = `${origin}/invite/${token}`;
 
@@ -77,6 +78,7 @@ export async function createInviteAction(
     error: null,
     link: inviteUrl,
     emailSent: sendResult.ok,
+    emailError: sendResult.ok ? null : ("error" in sendResult ? sendResult.error : "Unknown email error"),
   };
 }
 

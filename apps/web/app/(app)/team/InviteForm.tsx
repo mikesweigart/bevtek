@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { createInviteAction, type InviteState } from "./actions";
 
-const initial: InviteState = { error: null, link: null, emailSent: false };
+const initial: InviteState = { error: null, link: null, emailSent: false, emailError: null };
 
 const inputCls =
   "w-full rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm outline-none focus:border-[color:var(--color-gold)]";
@@ -61,8 +61,10 @@ export function InviteForm({ origin }: { origin: string }) {
         <div className="rounded-md bg-zinc-50 border border-[color:var(--color-border)] p-3 text-sm space-y-2">
           <p className="text-xs text-[color:var(--color-muted)]">
             {state.emailSent
-              ? "✓ Email sent. Or share this link directly:"
-              : "Invite link (14-day expiry) — send to your teammate:"}
+              ? "✓ Invite email sent. Or share this link directly:"
+              : state.emailError
+                ? `Email couldn't send: ${state.emailError}. Share this link instead:`
+                : "Invite link (14-day expiry) — share with your teammate:"}
           </p>
           <div className="flex gap-2">
             <input
