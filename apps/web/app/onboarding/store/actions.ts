@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { sendWelcomeEmail } from "@/lib/email/sendWelcome";
 
 export type OnboardingState = { error: string | null };
 
@@ -44,6 +46,28 @@ export async function createStoreAction(
   });
 
   if (error) return { error: error.message };
+
+  // Best-effort welcome email (don't block onboarding if it fails).
+  try {
+    const hdrs = await headers();
+    const origin =
+      hdrs.get("origin") ?? `https://${hdrs.get("host") ?? "bevtek-web.vercel.app"}`;
+    const { data: storeRow } = await supabase
+      .from("stores")
+      .select("slug")
+      .eq("name", storeName)
+      .maybeSingle();
+    const slug = (storeRow as { slug?: string } | null)?.slug;
+    await sendWelcomeEmail({
+      to: auth.user.email!,
+      storeName,
+      ownerName: fullName || null,
+      dashboardUrl: `${origin}/dashboard`,
+      shopperUrl: slug ? `${origin}/s/${slug}` : null,
+    });
+  } catch {
+    // swallow
+  }
 
   redirect("/onboarding/logo");
 }
