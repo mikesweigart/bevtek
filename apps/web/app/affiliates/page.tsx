@@ -198,6 +198,98 @@ export default function AffiliatesLanding() {
         </div>
       </section>
 
+      {/* B2B partner tiers */}
+      <section className="px-6 py-16 sm:py-24">
+        <div className="max-w-5xl mx-auto space-y-10">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Strategic partnerships
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+              Bring stores at scale.
+            </h2>
+            <p className="text-[color:var(--color-muted)] leading-relaxed">
+              POS companies, payment processors, and distributors already serve
+              every store we want. Let&apos;s make BevTek a value-add for your
+              customers — and a revenue stream for you.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3 items-start">
+            <div className="rounded-2xl border-2 border-[color:var(--color-gold)] bg-white p-6 space-y-3 md:-translate-y-2 shadow-lg">
+              <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+                Tier 1
+              </p>
+              <h3 className="text-xl font-semibold">POS companies</h3>
+              <p className="text-3xl font-semibold text-[color:var(--color-gold)]">
+                20%
+              </p>
+              <p className="text-xs text-[color:var(--color-muted)]">
+                Recurring · 90-day attribution
+              </p>
+              <p className="text-sm text-[color:var(--color-muted)] leading-relaxed pt-2">
+                Lightspeed, KORONA, mPower, Bottle POS — your existing customers
+                are our target market. Recommending BevTek makes your product
+                stickier.
+              </p>
+              <p className="text-xs text-[color:var(--color-fg)] font-medium pt-2">
+                Example: 10 Pro Plus stores = $373.50/mo to you
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[color:var(--color-border)] bg-white p-6 space-y-3">
+              <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+                Tier 2
+              </p>
+              <h3 className="text-xl font-semibold">Payment processors</h3>
+              <p className="text-3xl font-semibold text-[color:var(--color-gold)]">
+                15%
+              </p>
+              <p className="text-xs text-[color:var(--color-muted)]">
+                Recurring · 60-day attribution
+              </p>
+              <p className="text-sm text-[color:var(--color-muted)] leading-relaxed pt-2">
+                Merchant services reps and ISOs call on liquor stores
+                constantly. A BevTek referral is a value-add that helps you
+                close and retain merchants.
+              </p>
+              <p className="text-xs text-[color:var(--color-fg)] font-medium pt-2">
+                Example: 10 Pro Plus stores = $280/mo to you
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[color:var(--color-border)] bg-white p-6 space-y-3">
+              <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+                Tier 3
+              </p>
+              <h3 className="text-xl font-semibold">Store referrals</h3>
+              <p className="text-3xl font-semibold text-[color:var(--color-gold)]">
+                $150
+              </p>
+              <p className="text-xs text-[color:var(--color-muted)]">
+                One-time · 30-day cookie · referred store gets 30-day free trial
+              </p>
+              <p className="text-sm text-[color:var(--color-muted)] leading-relaxed pt-2">
+                Happy store owners tell the store down the road. Reward them
+                with a flat commission when their referral converts to a paid
+                plan.
+              </p>
+              <p className="text-xs text-[color:var(--color-fg)] font-medium pt-2">
+                Already a BevTek store? You qualify automatically.
+              </p>
+            </div>
+          </div>
+          <div className="text-center pt-2">
+            <a
+              href="mailto:partners@bevtek.ai?subject=Partner%20Inquiry&body=Company%3A%20%0AYour%20role%3A%20%0ANumber%20of%20liquor%20store%20customers%20you%20serve%3A%20%0AAbout%20your%20business%3A%20"
+              className="inline-flex items-center justify-center rounded-md px-6 py-3 text-sm font-semibold border border-[color:var(--color-gold)] text-[color:var(--color-gold)] hover:bg-[color:var(--color-gold)] hover:text-white transition-colors"
+            >
+              Email partners@bevtek.ai
+            </a>
+            <p className="text-xs text-[color:var(--color-muted)] mt-3">
+              We reply to partner inquiries within one business day.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <footer className="px-6 py-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-[color:var(--color-muted)]">
           <Link href="/" className="hover:text-[color:var(--color-fg)]">← Back to BevTek</Link>
