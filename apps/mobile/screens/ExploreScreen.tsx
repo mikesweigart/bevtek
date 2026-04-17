@@ -5,7 +5,7 @@ import { colors } from "../lib/theme";
 import { CATEGORY_BADGES } from "../lib/levels";
 import { ListenButton } from "../components/ListenButton";
 import { StoreProducts } from "../components/StoreProducts";
-import { ShopLink } from "../components/ShopLink";
+import { MarkdownText } from "../components/MarkdownText";
 import { QuizCelebration } from "../components/QuizCelebration";
 import { getModuleImage } from "../lib/images";
 
@@ -47,7 +47,6 @@ export default function ExploreScreen() {
   const [revealed, setRevealed] = useState<boolean[]>([]);
   const [result, setResult] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [storeSlug, setStoreSlug] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -60,12 +59,6 @@ export default function ExploreScreen() {
     const map = new Map<string, Progress>();
     for (const p of (progRes.data as Progress[]) ?? []) map.set(p.module_id, p);
     setProgress(map);
-    // Load store slug for shop links
-    const { data: profile } = await supabase.from("users").select("store_id").eq("id", user.id).maybeSingle();
-    if ((profile as any)?.store_id) {
-      const { data: store } = await supabase.from("stores").select("slug").eq("id", (profile as any).store_id).maybeSingle();
-      setStoreSlug((store as any)?.slug ?? null);
-    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -128,18 +121,14 @@ export default function ExploreScreen() {
           <ListenButton text={content} title={selected.title} />
         )}
 
-        <Text style={{ fontSize: 14, lineHeight: 22, marginBottom: 24 }}>{content}</Text>
+        <View style={{ marginBottom: 24 }}>
+          <MarkdownText text={content} />
+        </View>
 
-        {/* Dynamic products from the store's inventory */}
+        {/* Dynamic products from the store's inventory with live prices */}
         <StoreProducts
           keywords={extractSearchTerms(selected.title, selected.category_group)}
           title="From your store"
-        />
-
-        {/* Shop link — connects to the store's Megan Shopper */}
-        <ShopLink
-          storeSlug={storeSlug}
-          searchQuery={extractSearchTerms(selected.title, selected.category_group)[0] ?? selected.title}
         />
 
         {result ? (
