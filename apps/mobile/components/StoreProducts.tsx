@@ -46,7 +46,8 @@ export function StoreProducts({
         ])
         .join(",");
 
-      const { data } = await supabase
+      // Primary query: active, in-stock items matching keywords
+      let { data } = await supabase
         .from("inventory")
         .select("id, name, brand, price, stock_qty, image_url, sku")
         .or(clauses)
@@ -54,6 +55,29 @@ export function StoreProducts({
         .gt("stock_qty", 0)
         .order("stock_qty", { ascending: false })
         .limit(limit);
+
+      // Fallback: relax stock filter so staff still see matching products
+      if (!data || data.length === 0) {
+        const fb = await supabase
+          .from("inventory")
+          .select("id, name, brand, price, stock_qty, image_url, sku")
+          .or(clauses)
+          .eq("is_active", true)
+          .order("stock_qty", { ascending: false })
+          .limit(limit);
+        data = fb.data;
+      }
+
+      // Last-ditch fallback: drop is_active in case column is null/false by default
+      if (!data || data.length === 0) {
+        const fb2 = await supabase
+          .from("inventory")
+          .select("id, name, brand, price, stock_qty, image_url, sku")
+          .or(clauses)
+          .order("stock_qty", { ascending: false })
+          .limit(limit);
+        data = fb2.data;
+      }
 
       setProducts((data as Product[] | null) ?? []);
       setLoading(false);

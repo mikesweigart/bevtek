@@ -12,22 +12,86 @@ import { getModuleImage } from "../lib/images";
 type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
 type Progress = { module_id: string; status: string; stars_earned: number };
 
+/** Per-module ingredient keyword overrides. Cocktails search for their actual components. */
+const MODULE_KEYWORDS: Record<string, string[]> = {
+  // Cocktail recipes — ingredient-based
+  "Manhattan": ["rye", "whiskey", "vermouth", "bitters", "bourbon"],
+  "Old Fashioned": ["bourbon", "whiskey", "rye", "bitters", "sugar"],
+  "Negroni": ["gin", "campari", "vermouth"],
+  "Martini": ["gin", "vodka", "vermouth", "olive"],
+  "Margarita": ["tequila", "lime", "cointreau", "triple sec"],
+  "Espresso Martini": ["vodka", "coffee", "kahlua", "espresso"],
+  "Moscow Mule": ["vodka", "ginger"],
+  "Mojito": ["rum", "lime", "mint"],
+  "Daiquiri": ["rum", "lime"],
+  "Cosmopolitan": ["vodka", "cointreau", "cranberry", "lime"],
+  "French 75": ["gin", "champagne", "lemon"],
+  "Mai Tai": ["rum", "orgeat", "lime", "orange"],
+  "Paloma": ["tequila", "grapefruit"],
+  "Piña Colada": ["rum", "pineapple", "coconut"],
+  "Aperol Spritz": ["aperol", "prosecco"],
+  "Whiskey Sour": ["bourbon", "whiskey", "lemon"],
+  "Tom Collins": ["gin", "lemon"],
+  // Wine — prefer grape/region over generic "wine"
+  "French Chardonnay": ["chardonnay", "chablis", "burgundy", "meursault", "macon"],
+  "Burgundy — Pinot Noir": ["burgundy", "pinot noir", "bourgogne"],
+  "Bordeaux Reds": ["bordeaux", "cabernet", "merlot"],
+  "Champagne & Sparkling": ["champagne", "prosecco", "cava", "sparkling"],
+  "Napa Cabernet": ["napa", "cabernet"],
+  "California Chardonnay": ["chardonnay", "california"],
+  "Oregon Pinot Noir": ["oregon", "pinot noir"],
+  "Argentine Malbec": ["malbec", "argentina"],
+  "Italian Reds — Chianti to Amarone": ["chianti", "amarone", "sangiovese", "brunello"],
+  "Spanish Rioja": ["rioja", "tempranillo"],
+  "Australian Shiraz": ["shiraz", "syrah", "australia"],
+  "Barolo — Italy": ["barolo", "nebbiolo", "italy"],
+  "New Zealand Sauvignon Blanc": ["sauvignon blanc", "new zealand", "marlborough"],
+  "German & Alsatian Riesling": ["riesling"],
+  // Whiskey
+  "Bourbon 101": ["bourbon"],
+  "Bourbon Deep-Dive — Mash Bills & Flavor": ["bourbon"],
+  "American Rye Whiskey": ["rye"],
+  "Scotch — Single Malt": ["scotch", "single malt"],
+  "Scotch — Blended": ["scotch", "blended"],
+  "Scotch — Peated vs. Unpeated": ["scotch", "islay", "peat"],
+  "Irish Whiskey": ["irish", "jameson"],
+  "Japanese Whisky": ["japanese", "suntory", "nikka"],
+  "Tennessee Whiskey": ["tennessee", "jack daniel"],
+  // Other spirits
+  "Tequila & Mezcal": ["tequila", "mezcal"],
+  "Gin Essentials": ["gin"],
+  "Vodka Basics": ["vodka"],
+  "Rum — Light & Dark": ["rum"],
+  "Cognac & Brandy": ["cognac", "brandy"],
+  // Beer
+  "IPA Styles Guide": ["ipa"],
+  "Local Craft IPAs — Southeast": ["ipa"],
+  "Belgian Ales": ["belgian", "ale"],
+  "Lagers & Pilsners": ["lager", "pilsner"],
+  "Stouts & Porters": ["stout", "porter"],
+  "Wheat Beers": ["wheat", "hefeweizen"],
+};
+
 /** Extract search keywords from a module title + category for inventory matching */
 function extractSearchTerms(title: string, categoryGroup: string | null): string[] {
-  const SKIP = new Set(["the", "a", "an", "to", "and", "of", "for", "vs", "how", "around", "beyond", "guide", "basics", "essentials", "101", "family"]);
+  // Hand-curated override wins
+  if (MODULE_KEYWORDS[title]) return MODULE_KEYWORDS[title];
+
+  const SKIP = new Set(["the", "a", "an", "to", "and", "of", "for", "vs", "how", "around", "beyond", "guide", "basics", "essentials", "101", "family", "deep", "dive", "style", "styles"]);
   const words = title
     .replace(/[—–\-]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !SKIP.has(w.toLowerCase()))
-    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""));
+    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
+    .filter(Boolean);
   const catTerms: Record<string, string[]> = {
-    wine_france: ["wine", "french"],
-    wine_usa: ["wine", "california", "oregon"],
+    wine_france: ["wine"],
+    wine_usa: ["wine"],
     wine_world: ["wine"],
-    spirits: ["whiskey", "bourbon", "scotch", "gin", "rum", "vodka", "tequila"],
-    beer: ["beer", "ipa", "ale", "lager", "stout"],
-    cocktails: ["cocktail"],
-    cocktail_recipes: ["cocktail"],
+    spirits: ["whiskey", "bourbon"],
+    beer: ["beer"],
+    cocktails: ["whiskey", "gin", "rum", "vodka", "tequila"],
+    cocktail_recipes: ["whiskey", "gin", "rum", "vodka", "tequila"],
   };
   return [...new Set([...words, ...(catTerms[categoryGroup ?? ""] ?? [])])].slice(0, 6);
 }
