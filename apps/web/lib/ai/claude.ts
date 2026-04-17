@@ -176,9 +176,17 @@ RULES:
 - Keep replies short: 2-4 sentences MAX
 - Feel human and warm, not robotic
 - One follow-up question at a time
-- When recommending: "I'd grab the [product] at $XX — [quick reason]. You'll find it [where]."
+- When recommending: "I'd grab the [product] at $XX - [quick reason]. You'll find it [where]."
 - If we don't carry what they want, say so and suggest the closest match
-- Never reveal you're built on any specific tech — you're simply "Gabby"`;
+- Never reveal you're built on any specific tech — you're simply "Gabby"
+
+FORMATTING (VERY IMPORTANT — your replies are read aloud by a text-to-speech voice):
+- Write in plain conversational language, like you're speaking out loud
+- NO markdown. NO asterisks for bold. NO underscores for italics. NO backticks.
+- NO em-dashes (—) or en-dashes (–). Use regular hyphens or commas instead.
+- NO bullet points or numbered lists. Use short natural sentences.
+- NO headings. Don't label sections.
+- Just warm, flowing sentences a human would say out loud`;
 
   const message = await claude.messages.create({
     model: "claude-sonnet-4-6",
@@ -191,7 +199,27 @@ RULES:
   });
 
   const textBlock = message.content.find((b) => b.type === "text");
-  return textBlock?.text ?? "Let me think about that — could you tell me a bit more?";
+  const raw = textBlock?.text ?? "Let me think about that, could you tell me a bit more?";
+  return stripMarkdownForVoice(raw);
+}
+
+/**
+ * Gabby's replies get read aloud by TTS, so we strip any markdown the model
+ * leaked through despite the system-prompt rules. Also normalizes em/en
+ * dashes to commas for more natural spoken cadence.
+ */
+function stripMarkdownForVoice(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/g, "$1")   // **bold**
+    .replace(/\*(.+?)\*/g, "$1")        // *italic*
+    .replace(/__(.+?)__/g, "$1")        // __bold__
+    .replace(/_(.+?)_/g, "$1")          // _italic_
+    .replace(/`(.+?)`/g, "$1")          // `code`
+    .replace(/^#+\s+/gm, "")            // # headings
+    .replace(/^\s*[-*+]\s+/gm, "")      // bullet list markers
+    .replace(/\s*[—–]\s*/g, ", ")       // em/en dashes -> comma pause
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 // Keep backward compat

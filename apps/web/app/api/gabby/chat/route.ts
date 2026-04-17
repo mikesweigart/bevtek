@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   const store = storeData as { id: string; name: string } | null;
   if (!store) {
-    return json({ error: "store not found", messages: history }, { status: 404 });
+    return json({ error: "store not found", messages: history }, { status: 400 });
   }
 
   // Keyword search across the conversation to surface inventory for Gabby

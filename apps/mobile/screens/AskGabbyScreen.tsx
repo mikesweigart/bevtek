@@ -54,9 +54,14 @@ export default function AskGabbyScreen() {
     }
     Speech.stop();
     setSpeakingIdx(idx);
+    // Pick a warm English voice when available. On iOS, Speech falls back
+    // to the system default if no match. Language tag ensures the right
+    // locale so numbers / dollar signs get read correctly.
     Speech.speak(text, {
-      pitch: 1.05,
-      rate: 0.98,
+      language: "en-US",
+      pitch: 1.08,
+      rate: 0.96,
+      volume: 1.0,
       onDone: () => setSpeakingIdx((cur) => (cur === idx ? null : cur)),
       onStopped: () => setSpeakingIdx((cur) => (cur === idx ? null : cur)),
       onError: () => setSpeakingIdx(null),
