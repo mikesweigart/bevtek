@@ -100,7 +100,7 @@ RULES:
 - If we don't carry what they want, say so honestly and suggest the closest thing we DO have`;
 
   const message = await claude.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 300,
     system: systemPrompt,
     messages: opts.messages.map((m) => ({
@@ -153,7 +153,7 @@ export async function generateModuleFromText(opts: {
   if (!claude) return null;
 
   const message = await claude.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 2000,
     system: `You are a master sommelier and beverage education expert. You create training modules for liquor store staff.
 

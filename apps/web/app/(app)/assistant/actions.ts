@@ -100,8 +100,10 @@ export async function sendMessageAction(
   }
 
   // Get Megan's conversational response
-  let aiResponse = "I'm having trouble right now — try again in a moment.";
-  if (isAIConfigured()) {
+  let aiResponse: string;
+  if (!isAIConfigured()) {
+    aiResponse = "Megan AI is not connected yet. Add the ANTHROPIC_API_KEY environment variable in Vercel and redeploy.";
+  } else {
     try {
       aiResponse = await chatWithMegan({
         messages,
@@ -112,7 +114,9 @@ export async function sendMessageAction(
         storeName,
       });
     } catch (e) {
-      console.error("Claude error:", (e as Error).message);
+      const errMsg = (e as Error).message ?? "Unknown error";
+      console.error("Claude error:", errMsg);
+      aiResponse = `Error from AI: ${errMsg}. Check that your Anthropic API key is valid and has billing enabled at console.anthropic.com.`;
     }
   }
 
