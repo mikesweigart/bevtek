@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
+import { foundStore } from "../lib/foundStore";
 
 export type Product = {
   id: string;
@@ -169,10 +170,21 @@ export default function ProductDetailModal({
 
   function handleFound() {
     setFound(true);
+    // Push into the session-scoped found list so My List's "🎯 Found in
+    // Store" section lights up immediately — no round-trip needed.
+    if (product) {
+      foundStore.add({
+        id: product.id,
+        name: product.name,
+        brand: product.brand,
+        price: product.price,
+        image_url: product.image_url ?? null,
+      });
+    }
     setTimeout(() => {
       Alert.alert(
         "Nice find! 🎉",
-        "We've marked this as found in store.",
+        "Added to your list under Found in Store.",
         [{ text: "Back to results", onPress: onBackToResults }],
       );
     }, 150);

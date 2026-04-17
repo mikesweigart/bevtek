@@ -25,8 +25,10 @@ import HoldsQueueScreen from "./screens/HoldsQueueScreen";
 
 // Customer
 import ShopScreen from "./screens/ShopScreen";
-import MyHoldsScreen from "./screens/MyHoldsScreen";
-import SavedScreen from "./screens/SavedScreen";
+// MyHoldsScreen + SavedScreen kept as standalone routes — the unified
+// SummaryScreen ("My List") now owns the primary nav slot, but these
+// remain on disk so we can deep-link to a single section if needed.
+import SummaryScreen from "./screens/SummaryScreen";
 
 const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -144,9 +146,9 @@ function EmployeeTabs() {
         options={{ title: "Customer Holds" }}
       />
       <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
-        options={{ headerShown: false }}
+        name="MyList"
+        component={SummaryScreen}
+        options={{ tabBarLabel: "My List", headerShown: false }}
       />
       <Tab.Screen
         name="Profile"
@@ -169,12 +171,17 @@ function CustomerTabs() {
         component={AskGabbyScreen}
         options={{ tabBarLabel: "Gabby", title: "Gabby", headerShown: false }}
       />
+      {/*
+       * "My List" is the unified end-of-session summary — cart, saved,
+       * active holds, and the things they grabbed themselves, all in one
+       * place with text/email/QR export. Replaces the earlier split
+       * Saved + My Holds tabs so shoppers don't have to bounce around.
+       */}
       <Tab.Screen
-        name="Saved"
-        component={SavedScreen}
-        options={{ headerShown: false }}
+        name="MyList"
+        component={SummaryScreen}
+        options={{ tabBarLabel: "My List", headerShown: false }}
       />
-      <Tab.Screen name="My Holds" component={MyHoldsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
