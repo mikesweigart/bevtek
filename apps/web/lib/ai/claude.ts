@@ -1,5 +1,4 @@
-// Claude AI client for Megan Assistant + custom module generation.
-// Uses Claude Sonnet for reasoning (Assistant queries, module generation).
+// Claude AI client for Megan — conversational beverage expert.
 
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -17,12 +16,18 @@ export function isAIConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 /**
- * Ask Megan a question about beverages, using the store's inventory as context.
- * Returns a natural-language answer grounded in what the store actually carries.
+ * Multi-turn conversational Megan. Asks follow-up questions like a real
+ * sommelier / bourbon expert before recommending. Grounds answers in
+ * the store's actual inventory.
  */
-export async function askMegan(opts: {
-  query: string;
+export async function chatWithMegan(opts: {
+  messages: ChatMessage[];
   inventory: Array<{
     name: string;
     brand: string | null;
@@ -34,7 +39,7 @@ export async function askMegan(opts: {
 }): Promise<string> {
   const claude = getAnthropic();
   if (!claude) {
-    return "AI is not configured. Add ANTHROPIC_API_KEY to enable Megan's conversational assistant.";
+    return "AI is not configured. Add ANTHROPIC_API_KEY to enable Megan.";
   }
 
   const inventoryContext =
@@ -45,36 +50,90 @@ export async function askMegan(opts: {
               `- ${i.name}${i.brand ? ` (${i.brand})` : ""}${i.category ? ` [${i.category}]` : ""} — ${i.price != null ? `$${Number(i.price).toFixed(2)}` : "price N/A"} — ${i.stock_qty} in stock`,
           )
           .join("\n")
-      : "No matching inventory items found.";
+      : "No matching products found in store inventory.";
+
+  const systemPrompt = `You are Megan, the AI beverage expert at ${opts.storeName}. You help store staff answer customer questions — and you're REALLY good at it.
+
+PERSONALITY:
+- Warm, friendly, genuinely passionate about beverages
+- Confident but never condescending — like the best sommelier you've ever met
+- You love helping people discover the right drink
+- Empathetic — you read between the lines of what customers actually need
+
+CONVERSATION STYLE — THIS IS CRITICAL:
+When a question is BROAD or OPEN ("what wine for chicken?", "recommend a bourbon", "I need a gift"), you MUST ask 1-2 SHORT follow-up questions before recommending. A real expert narrows it down first:
+
+Examples of good follow-ups:
+- "Love it! Quick question — are you thinking white or red with that?"
+- "Sure thing! What's your budget — everyday range or something special?"
+- "Great choice! Do you prefer smooth and easy-sipping, or bold with some kick?"
+- "Absolutely! Is this for drinking neat, on the rocks, or mixing cocktails?"
+- "Nice! Full-proof and bold, or something lighter and smoother?"
+- "Who's it for? That'll help me pick the perfect one."
+
+When a question is SPECIFIC ENOUGH ("peaty Scotch under $60", "Pinot Noir for salmon"), go straight to a confident recommendation.
+
+AFTER getting enough context (usually after 1-2 follow-ups), give a SPECIFIC recommendation:
+- Name 1-2 products FROM THE STORE INVENTORY below
+- Include the price
+- Explain WHY it fits in one sentence
+- Be decisive — "I'd go with..." not "you could try..."
+
+WHAT YOU KNOW:
+- Wine: regions, grapes, food pairings, vintages, serving temps, glassware
+- Bourbon: mash bills (high-rye vs wheated), proof preferences, cocktail vs sipping
+- Scotch: peated vs unpeated, regions, age statements
+- Tequila: blanco vs reposado vs añejo, 100% agave importance
+- Beer: IPA styles (West Coast vs Hazy), craft recommendations, food pairings
+- Cocktails: recipes, ingredients, techniques, proportions
+- Gifts: budget-appropriate, presentation matters
+- Food pairings: be specific and confident
+
+STORE INVENTORY (what we actually carry — ONLY recommend from this list):
+${inventoryContext}
+
+RULES:
+- Keep each response to 2-4 sentences MAX
+- Sound human, warm, conversational — NOT like a search engine
+- Ask ONE follow-up question at a time (not three at once)
+- When recommending, be decisive: "I'd go with the [product] at $XX"
+- If we don't carry what they want, say so honestly and suggest the closest thing we DO have`;
 
   const message = await claude.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 600,
-    system: `You are Megan, the AI beverage assistant at ${opts.storeName}. You help store staff answer customer questions about wine, spirits, beer, and cocktails.
-
-RULES:
-- Be concise (2-4 sentences for simple questions, up to a paragraph for complex ones)
-- Always reference specific products FROM THE STORE'S INVENTORY when possible
-- Include prices when available
-- If the store doesn't carry what the customer wants, suggest the closest alternative from inventory
-- Speak like a knowledgeable friend, not a textbook
-- If asked about food pairings, be specific and confident
-- Never say "I don't know" — always offer a helpful suggestion even if the exact product isn't in stock`,
-    messages: [
-      {
-        role: "user",
-        content: `Store inventory matching this query:\n${inventoryContext}\n\nCustomer question: "${opts.query}"`,
-      },
-    ],
+    max_tokens: 300,
+    system: systemPrompt,
+    messages: opts.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
   });
 
   const textBlock = message.content.find((b) => b.type === "text");
   return textBlock?.text ?? "I couldn't generate a response. Please try again.";
 }
 
+// Keep backward compat
+export async function askMegan(opts: {
+  query: string;
+  inventory: Array<{
+    name: string;
+    brand: string | null;
+    category: string | null;
+    price: number | null;
+    stock_qty: number;
+  }>;
+  storeName: string;
+}): Promise<string> {
+  return chatWithMegan({
+    messages: [{ role: "user", content: opts.query }],
+    inventory: opts.inventory,
+    storeName: opts.storeName,
+  });
+}
+
 /**
  * Generate a training module from uploaded document text.
- * Returns structured content ready to insert into the modules table.
  */
 export async function generateModuleFromText(opts: {
   documentText: string;
@@ -130,7 +189,6 @@ Respond in JSON format:
   if (!textBlock?.text) return null;
 
   try {
-    // Extract JSON from the response (handle markdown code blocks)
     let jsonStr = textBlock.text;
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) jsonStr = jsonMatch[1];
