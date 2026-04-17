@@ -8,26 +8,28 @@ import { supabase } from "./lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import { colors } from "./lib/theme";
 
-// Screens — shared
+// Auth
 import LoginScreen from "./screens/LoginScreen";
 import SignupScreen from "./screens/SignupScreen";
-import ProfileScreen from "./screens/ProfileScreen";
 
-// Screens — employee (staff/manager/owner)
+// Shared
+import ProfileScreen from "./screens/ProfileScreen";
+import AskGabbyScreen from "./screens/AskGabbyScreen";
+
+// Employee
 import HomeScreen from "./screens/HomeScreen";
 import ExploreScreen from "./screens/ExploreScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
 import HoldsQueueScreen from "./screens/HoldsQueueScreen";
 
-// Screens — shared (employee + customer)
-import AskGabbyScreen from "./screens/AskGabbyScreen";
-
-// Screens — customer
+// Customer
 import ShopScreen from "./screens/ShopScreen";
 import MyHoldsScreen from "./screens/MyHoldsScreen";
 
 const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
+const HomeStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 
 type Role = "owner" | "manager" | "staff" | "customer" | null;
 
@@ -37,6 +39,50 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Signup" component={SignupScreen} />
     </AuthStack.Navigator>
+  );
+}
+
+/**
+ * Nested stack inside the Home tab so we can push deeper screens
+ * (Leaderboard) without bloating the bottom bar. Keeps 5 tabs — the UX
+ * sweet spot — while still giving Leaderboard a prominent call-to-action
+ * on the Home dashboard.
+ */
+function HomeStackNav() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{
+          headerShown: true,
+          title: "Team Leaderboard",
+          headerStyle: { backgroundColor: colors.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: "700", color: colors.fg },
+        }}
+      />
+    </HomeStack.Navigator>
+  );
+}
+
+function ProfileStackNav() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{
+          headerShown: true,
+          title: "Team Leaderboard",
+          headerStyle: { backgroundColor: colors.bg },
+          headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: "700", color: colors.fg },
+        }}
+      />
+    </ProfileStack.Navigator>
   );
 }
 
@@ -61,33 +107,61 @@ const tabScreenOptions = {
 };
 
 /**
- * Employee tab stack — staff, managers, owners. They see BOTH personas:
- * Megan as their Trainer (Home + Ask Megan), Gabby as the floor assistant
- * they channel to help customers (Ask Gabby). Holds queue = incoming
- * customer requests to fulfill.
+ * Employee tabs. Personas shown as nouns ("Megan", "Gabby") — not verbs —
+ * because the persona IS the thing, not something you "ask".
+ * - Home: Trainer dashboard (stars, streak, featured modules, leaderboard link)
+ * - Megan: training modules (the Trainer persona)
+ * - Gabby: floor assistant (channel Gabby to help a shopper)
+ * - Holds: customer hold queue (fulfillment)
+ * - Profile: role + account
+ *
+ * Route names stay "Explore" and "AskGabby" under the hood so existing
+ * nav.navigate("Explore", ...) calls from HomeScreen keep working.
  */
 function EmployeeTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
-      <Tab.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Ask Megan" component={ExploreScreen} />
-      <Tab.Screen name="Ask Gabby" component={AskGabbyScreen} />
-      <Tab.Screen name="Holds" component={HoldsQueueScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeStackNav}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen
+        name="Explore"
+        component={ExploreScreen}
+        options={{ tabBarLabel: "Megan", title: "Megan" }}
+      />
+      <Tab.Screen
+        name="AskGabby"
+        component={AskGabbyScreen}
+        options={{ tabBarLabel: "Gabby", title: "Gabby", headerShown: false }}
+      />
+      <Tab.Screen
+        name="Holds"
+        component={HoldsQueueScreen}
+        options={{ title: "Customer Holds" }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStackNav}
+        options={{ headerShown: false }}
+      />
     </Tab.Navigator>
   );
 }
 
 /**
- * Customer tab stack — shoppers only. Customers never meet Megan; they
- * only interact with Gabby. Shop = browse + hold. Ask Gabby = chat.
- * My Holds = reservations placed.
+ * Customer tabs — shoppers only meet Gabby. Megan is never surfaced.
  */
 function CustomerTabs() {
   return (
     <Tab.Navigator screenOptions={tabScreenOptions}>
       <Tab.Screen name="Shop" component={ShopScreen} />
-      <Tab.Screen name="Ask Gabby" component={AskGabbyScreen} />
+      <Tab.Screen
+        name="AskGabby"
+        component={AskGabbyScreen}
+        options={{ tabBarLabel: "Gabby", title: "Gabby", headerShown: false }}
+      />
       <Tab.Screen name="My Holds" component={MyHoldsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -107,10 +181,6 @@ export default function App() {
         setLoading(false);
         return;
       }
-      // Fetch role from public.users. Default to 'customer' when row is
-      // missing — new signups from the customer app won't have a users row
-      // until they call claim_customer_profile, and we'd rather show them
-      // the shopper experience than the staff one.
       const { data } = await supabase
         .from("users")
         .select("role")

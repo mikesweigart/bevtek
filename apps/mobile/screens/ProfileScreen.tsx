@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { levelForStars } from "../lib/levels";
 
 export default function ProfileScreen() {
+  const nav = useNavigation<any>();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string; role: string } | null>(null);
   const [game, setGame] = useState<{ total_stars: number; current_streak_days: number; longest_streak_days: number } | null>(null);
 
@@ -52,6 +54,13 @@ export default function ProfileScreen() {
         <Text style={[s.infoValue, { textTransform: "capitalize" }]}>{profile?.role ?? "—"}</Text>
       </View>
 
+      {profile?.role && profile.role !== "customer" && (
+        <TouchableOpacity style={s.linkBtn} onPress={() => nav.navigate("Leaderboard")}>
+          <Text style={s.linkText}>🏆  Team Leaderboard</Text>
+          <Text style={s.linkChevron}>›</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity style={s.signOutBtn} onPress={async () => { const { error } = await supabase.auth.signOut(); if (error) Alert.alert("Error", error.message); }}>
         <Text style={s.signOutText}>Sign out</Text>
       </TouchableOpacity>
@@ -78,7 +87,10 @@ const s = StyleSheet.create({
   infoSection: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 24 },
   infoLabel: { fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: colors.muted, marginTop: 12 },
   infoValue: { fontSize: 15, marginTop: 2 },
-  signOutBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 24 },
+  linkBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12 },
+  linkText: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.fg },
+  linkChevron: { fontSize: 24, color: colors.muted, fontWeight: "300" },
+  signOutBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 24, marginTop: 12 },
   signOutText: { fontSize: 15, color: colors.muted },
   version: { textAlign: "center", fontSize: 11, color: colors.muted, marginBottom: 32 },
 });

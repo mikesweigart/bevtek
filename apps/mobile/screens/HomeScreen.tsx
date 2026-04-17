@@ -112,6 +112,15 @@ export default function HomeScreen() {
         </View>
       )}
 
+      <TouchableOpacity activeOpacity={0.85} style={s.leaderCard} onPress={() => nav.navigate("Leaderboard")}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.leaderLabel}>TEAM</Text>
+          <Text style={s.leaderTitle}>See the leaderboard</Text>
+          <Text style={s.leaderSub}>Where you rank this week</Text>
+        </View>
+        <Text style={s.leaderChevron}>›</Text>
+      </TouchableOpacity>
+
       {game.current_streak_days > 0 && (
         <View style={s.streakCard}><Text style={s.streakIcon}>🔥</Text><Text style={s.streakText}>{game.current_streak_days} day streak — keep it going!</Text></View>
       )}
@@ -155,6 +164,11 @@ const s = StyleSheet.create({
   featInfo: { padding: 12 },
   featTitle: { fontSize: 15, fontWeight: "700" },
   featDesc: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  leaderCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#111111", borderRadius: 16, padding: 18, marginBottom: 16 },
+  leaderLabel: { fontSize: 10, letterSpacing: 2, color: colors.gold, fontWeight: "700" },
+  leaderTitle: { fontSize: 17, fontWeight: "700", color: "#fff", marginTop: 4 },
+  leaderSub: { fontSize: 12, color: "#9CA3AF", marginTop: 2 },
+  leaderChevron: { fontSize: 32, color: colors.gold, fontWeight: "300", marginLeft: 10 },
   streakCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FBF7F0", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.gold },
   streakIcon: { fontSize: 20 },
   streakText: { fontSize: 13, fontWeight: "600", color: colors.gold },

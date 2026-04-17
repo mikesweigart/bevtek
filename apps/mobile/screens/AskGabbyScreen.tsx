@@ -36,6 +36,7 @@ const WEB_BASE =
 export default function AskGabbyScreen() {
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string>("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -43,29 +44,36 @@ export default function AskGabbyScreen() {
 
   useEffect(() => {
     (async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user) {
-        const { data: urow } = await supabase
-          .from("users")
-          .select("store_id, stores(id, name)")
-          .eq("id", authData.user.id)
-          .maybeSingle();
-        const s = (urow as any)?.stores;
-        if (s) {
-          setStoreId(s.id);
-          setStoreName(s.name);
-          return;
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user) {
+          const { data: urow } = await supabase
+            .from("users")
+            .select("store_id, stores(id, name)")
+            .eq("id", authData.user.id)
+            .maybeSingle();
+          const s = (urow as any)?.stores;
+          if (s) {
+            setStoreId(s.id);
+            setStoreName(s.name);
+            return;
+          }
         }
-      }
-      // Fallback: first store
-      const { data } = await supabase
-        .from("stores")
-        .select("id, name")
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        setStoreId(data.id);
-        setStoreName(data.name);
+        // Fallback: first store
+        const { data, error } = await supabase
+          .from("stores")
+          .select("id, name")
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          setStoreId(data.id);
+          setStoreName(data.name);
+        } else {
+          setLoadError("No store connected to this account yet.");
+        }
+      } catch (e: any) {
+        setLoadError(e?.message ?? "Couldn't load store info.");
       }
     })();
   }, []);
@@ -85,16 +93,28 @@ export default function AskGabbyScreen() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ storeId, messages, userMessage: msg }),
         });
-        const data = await res.json();
-        if (data.error) {
-          setMessages([...optimistic, { role: "assistant", content: `Sorry — ${data.error}` }]);
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          // Non-JSON response (HTML 404, auth wall, etc.)
+          throw new Error(
+            `Server returned ${res.status}. ${text.slice(0, 120)}`,
+          );
+        }
+        if (!res.ok || data.error) {
+          setMessages([
+            ...optimistic,
+            { role: "assistant", content: `Sorry — ${data.error ?? `HTTP ${res.status}`}` },
+          ]);
         } else {
           setMessages(data.messages as ChatMessage[]);
         }
       } catch (e: any) {
         setMessages([
           ...optimistic,
-          { role: "assistant", content: `Couldn't reach Gabby (${e?.message ?? "network"}).` },
+          { role: "assistant", content: `Couldn't reach Gabby (${e?.message ?? "network error"}).` },
         ]);
       } finally {
         setSending(false);
@@ -119,7 +139,11 @@ export default function AskGabbyScreen() {
         <View>
           <Text style={styles.name}>Gabby</Text>
           <Text style={styles.sub}>
-            {storeName ? `${storeName} · online now` : "connecting..."}
+            {loadError
+              ? loadError
+              : storeName
+                ? `${storeName} · online now`
+                : "connecting..."}
           </Text>
         </View>
       </View>
