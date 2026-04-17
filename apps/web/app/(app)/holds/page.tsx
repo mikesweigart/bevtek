@@ -27,6 +27,8 @@ type HoldRow = {
   created_at: string;
   confirmed_at: string | null;
   picked_up_at: string | null;
+  confirmed_by: string | null;
+  picked_up_by: string | null;
 };
 
 function fmtPhone(n: string | null): string {
@@ -72,7 +74,7 @@ export default async function HoldsPage({
   let query = supabase
     .from("hold_requests")
     .select(
-      "id, item_id, item_snapshot, customer_name, customer_phone, customer_email, quantity, notes, status, source, hold_until, created_at, confirmed_at, picked_up_at",
+      "id, item_id, item_snapshot, customer_name, customer_phone, customer_email, quantity, notes, status, source, hold_until, created_at, confirmed_at, picked_up_at, confirmed_by, picked_up_by",
     )
     .order("created_at", { ascending: false });
 
@@ -86,6 +88,30 @@ export default async function HoldsPage({
 
   const { data: holds } = (await query) as { data: HoldRow[] | null };
   const list = holds ?? [];
+
+  // Look up teammate names for the confirmed_by / picked_up_by columns so
+  // we can show "Confirmed by Alex in 4m" on the card.
+  const userIds = Array.from(
+    new Set(
+      list
+        .flatMap((h) => [h.confirmed_by, h.picked_up_by])
+        .filter((x): x is string => Boolean(x)),
+    ),
+  );
+  const userNames = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", userIds);
+    for (const u of (users ?? []) as Array<{
+      id: string;
+      full_name: string | null;
+      email: string;
+    }>) {
+      userNames.set(u.id, u.full_name || u.email.split("@")[0] || "teammate");
+    }
+  }
 
   const counts = await Promise.all([
     supabase
@@ -161,7 +187,7 @@ export default async function HoldsPage({
       ) : (
         <div className="space-y-3">
           {list.map((h) => (
-            <HoldCard key={h.id} hold={h} />
+            <HoldCard key={h.id} hold={h} userNames={userNames} />
           ))}
         </div>
       )}
@@ -169,7 +195,37 @@ export default async function HoldsPage({
   );
 }
 
-function HoldCard({ hold }: { hold: HoldRow }) {
+function elapsed(fromIso: string, toIso: string | null): string {
+  if (!toIso) return "";
+  const diff = new Date(toIso).getTime() - new Date(fromIso).getTime();
+  if (diff <= 0) return "instantly";
+  const m = Math.round(diff / 60000);
+  if (m < 1) return "under a minute";
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  return `${d}d`;
+}
+
+function HoldCard({
+  hold,
+  userNames,
+}: {
+  hold: HoldRow;
+  userNames: Map<string, string>;
+}) {
+  const confirmedName = hold.confirmed_by
+    ? userNames.get(hold.confirmed_by)
+    : null;
+  const pickedUpName = hold.picked_up_by
+    ? userNames.get(hold.picked_up_by)
+    : null;
+  const confirmElapsed = elapsed(hold.created_at, hold.confirmed_at);
+  const pickupElapsed = elapsed(
+    hold.confirmed_at ?? hold.created_at,
+    hold.picked_up_at,
+  );
   const price =
     hold.item_snapshot?.price != null
       ? `$${Number(hold.item_snapshot.price).toFixed(2)}`
@@ -214,6 +270,29 @@ function HoldCard({ hold }: { hold: HoldRow }) {
         {hold.notes && (
           <p className="text-xs text-[color:var(--color-muted)] mt-1 italic">
             “{hold.notes}”
+          </p>
+        )}
+        {(confirmedName || pickedUpName) && (
+          <p className="text-[11px] text-[color:var(--color-muted)] mt-2">
+            {confirmedName && (
+              <>
+                Confirmed by{" "}
+                <span className="font-semibold text-[color:var(--color-fg)]">
+                  {confirmedName}
+                </span>
+                {confirmElapsed && ` in ${confirmElapsed}`}
+              </>
+            )}
+            {confirmedName && pickedUpName && " · "}
+            {pickedUpName && (
+              <>
+                Picked up via{" "}
+                <span className="font-semibold text-[color:var(--color-fg)]">
+                  {pickedUpName}
+                </span>
+                {pickupElapsed && ` after ${pickupElapsed}`}
+              </>
+            )}
           </p>
         )}
       </div>

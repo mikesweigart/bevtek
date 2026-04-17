@@ -1,7 +1,8 @@
-import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { CheckoutButton } from "./CheckoutButton";
 import { isStripeConfigured } from "@/lib/stripe/client";
+import { openBillingPortalAction } from "./portalAction";
+import { getNextInvoice } from "./nextInvoice";
 
 const PLANS = [
   {
@@ -94,6 +95,12 @@ export default async function BillingPage() {
   const currentPlan = s?.plan ?? "trial";
   const hasStripe = Boolean(s?.stripe_customer_id);
   const stripeReady = isStripeConfigured();
+
+  // Pull the upcoming invoice so we can show "Next charge: $249 on Apr 23".
+  const nextInvoice =
+    hasStripe && s?.stripe_customer_id
+      ? await getNextInvoice(s.stripe_customer_id)
+      : null;
 
   return (
     <div className="space-y-10">
@@ -191,36 +198,63 @@ export default async function BillingPage() {
         })}
       </div>
 
-      {isOwner && (
-        <div className="rounded-lg border border-[color:var(--color-border)] p-5 space-y-3">
-          <h2 className="text-sm font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
-            Stripe integration
-          </h2>
-          {hasStripe ? (
-            <p className="text-sm text-[color:var(--color-muted)]">
-              ✓ Stripe is connected. Plan changes and billing are managed
-              through Stripe. To update your payment method or view invoices,
-              check your email for Stripe billing links.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-[color:var(--color-muted)]">
-                Stripe billing is being set up. Once connected, you&apos;ll be
-                able to subscribe, upgrade, and manage payment directly from
-                this page.
+      {isOwner && hasStripe && (
+        <div className="rounded-2xl border border-[color:var(--color-border)] bg-white p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+                Payment & invoices
               </p>
-              <p className="text-xs text-[color:var(--color-muted)]">
-                Contact{" "}
-                <a
-                  href="mailto:activate@bevtek.ai"
-                  className="text-[color:var(--color-gold)] underline"
-                >
-                  activate@bevtek.ai
-                </a>{" "}
-                if you need help getting started.
-              </p>
+              {nextInvoice ? (
+                <>
+                  <p className="text-2xl font-semibold mt-1">
+                    Next charge{" "}
+                    <span className="text-[color:var(--color-gold)]">
+                      ${(nextInvoice.amountDue / 100).toFixed(2)}
+                    </span>
+                  </p>
+                  <p className="text-sm text-[color:var(--color-muted)]">
+                    on{" "}
+                    {new Date(
+                      nextInvoice.dateSeconds * 1000,
+                    ).toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-[color:var(--color-muted)] mt-1">
+                  Stripe is connected. Manage your card, download invoices,
+                  and see your next billing date in the portal.
+                </p>
+              )}
             </div>
-          )}
+            <form action={openBillingPortalAction}>
+              <button
+                type="submit"
+                className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold"
+              >
+                Update payment / view invoices
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isOwner && !hasStripe && (
+        <div className="rounded-lg border border-[color:var(--color-border)] p-5 space-y-2">
+          <h2 className="text-sm font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
+            Payment setup
+          </h2>
+          <p className="text-sm text-[color:var(--color-muted)]">
+            Pick a plan above to start your 14-day trial. No card required
+            until the trial ends. Once subscribed you&rsquo;ll get a
+            self-serve portal right here to update your card and download
+            invoices.
+          </p>
         </div>
       )}
 

@@ -96,9 +96,30 @@ export default async function CallsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Receptionist</h1>
         <p className="text-sm text-[color:var(--color-muted)]">
-          Inbound phone calls answered by Megan, 24/7.
+          Inbound phone calls answered by Gabby, 24/7. Every call becomes a
+          transcript, summary, and follow-up in your dashboard.
         </p>
       </div>
+
+      {/* Orientation block — always visible so owners understand what's
+          about to happen before they email activation. */}
+      <section className="grid gap-4 sm:grid-cols-3">
+        <HowItWorksCard
+          step="1"
+          title="You send us your number"
+          body="Your store phone, your hours, any scripts you want Gabby to follow."
+        />
+        <HowItWorksCard
+          step="2"
+          title="We forward it to Gabby"
+          body="No new hardware. No porting. Your existing line keeps working — Gabby just picks up when you can't."
+        />
+        <HowItWorksCard
+          step="3"
+          title="Every call lands here"
+          body="Transcript, caller intent, and an iMessage summary sent to the shopper. You walk in tomorrow and know exactly what happened."
+        />
+      </section>
 
       {migrationMissing && (
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
@@ -114,10 +135,10 @@ export default async function CallsPage() {
               Done for you
             </p>
             <h2 className="text-2xl font-semibold tracking-tight">
-              We&apos;ll set up Megan Receptionist for you.
+              We&apos;ll set up Gabby Receptionist for you.
             </h2>
             <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
-              Megan Receptionist is included with your plan. We handle every
+              Gabby Receptionist is included with your plan. We handle every
               piece of the technical setup — the AI voice agent, the phone
               number routing, the integrations — so you don&apos;t have to touch
               a single third-party service.
@@ -192,6 +213,28 @@ export default async function CallsPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function HowItWorksCard({
+  step,
+  title,
+  body,
+}: {
+  step: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[color:var(--color-border)] bg-white p-5 space-y-2">
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[color:var(--color-gold)] text-white text-xs font-bold">
+        {step}
+      </span>
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="text-xs text-[color:var(--color-muted)] leading-relaxed">
+        {body}
+      </p>
     </div>
   );
 }

@@ -85,11 +85,13 @@ export async function pickupHoldAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
   await supabase
     .from("hold_requests")
     .update({
       status: "picked_up",
       picked_up_at: new Date().toISOString(),
+      picked_up_by: auth.user?.id ?? null,
     })
     .eq("id", id);
   revalidatePath("/holds");

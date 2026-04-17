@@ -47,6 +47,10 @@ create policy "store_staff_read_gabby_convos"
 alter table public.hold_requests
   add column if not exists owner_notified_at timestamptz;
 
+-- Track which teammate handed the item to the customer (mirrors confirmed_by).
+alter table public.hold_requests
+  add column if not exists picked_up_by uuid references public.users(id) on delete set null;
+
 create index if not exists hold_requests_pending_notification_idx
   on public.hold_requests (store_id, created_at)
   where owner_notified_at is null;

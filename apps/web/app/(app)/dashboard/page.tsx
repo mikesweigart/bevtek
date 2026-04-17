@@ -2,6 +2,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
+// Canonical persona split (see MEMORY): Megan is staff-only (Trainer).
+// Every customer-facing surface is branded Gabby.
 const features = [
   {
     name: "Megan Trainer",
@@ -10,25 +12,25 @@ const features = [
     live: true,
   },
   {
-    name: "Megan Assistant",
+    name: "Gabby Assistant",
     desc: "Floor AI for real-time customer queries.",
     href: "/assistant",
     live: true,
   },
   {
-    name: "Megan Receptionist",
+    name: "Gabby Receptionist",
     desc: "24/7 AI answers every inbound call.",
     href: "/calls",
     live: true,
   },
   {
-    name: "Megan Shopper",
+    name: "Gabby Shopper",
     desc: "Customer-facing web app.",
     href: "shopper",
     live: true,
   },
   {
-    name: "Megan Texting",
+    name: "Gabby Texting",
     desc: "iMessage conversations with your customers.",
     href: "/texts",
     live: true,
@@ -53,54 +55,65 @@ export default async function DashboardPage() {
   };
   const isManager = p.role === "owner" || p.role === "manager";
 
-  // Parallel counts + the pieces the getting-started checklist needs.
-  // Try the full store query first; fall back to base columns if migrations
-  // 6/8 haven't been applied yet.
-  async function loadStore() {
-    const full = await supabase
+  // Each store-column probe runs independently so one missing migration
+  // doesn't blank out every flag (the old bundled query would silently
+  // return logo_url=null whenever sendblue_webhook_secret was missing —
+  // which made "Add your store logo" never tick off even after upload).
+  async function loadOne<T extends string>(col: T): Promise<string | null> {
+    const { data, error } = await supabase
       .from("stores")
-      .select(
-        "slug, logo_url, retell_webhook_secret, sendblue_webhook_secret",
-      )
+      .select(col)
       .eq("id", p.store_id)
       .maybeSingle();
-    if (!full.error) return full.data;
-    const fallback = await supabase
-      .from("stores")
-      .select("slug")
-      .eq("id", p.store_id)
-      .maybeSingle();
-    return fallback.data;
+    if (error) return null;
+    return ((data as Record<string, string | null> | null)?.[col] ?? null);
   }
 
-  const [inventory, modules, team, storeData, recentQueries, recentProgress] =
-    await Promise.all([
-      supabase.from("inventory").select("*", { count: "exact", head: true }),
-      supabase
-        .from("modules")
-        .select("*", { count: "exact", head: true })
-        .eq("is_published", true),
-      supabase.from("users").select("*", { count: "exact", head: true }),
-      loadStore(),
-      supabase
-        .from("floor_queries")
-        .select("id, query_text, created_at")
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from("progress")
-        .select("module_id, user_id, completed_at, modules(title)")
-        .eq("status", "completed")
-        .order("completed_at", { ascending: false })
-        .limit(5),
-    ]);
+  const [
+    inventory,
+    modules,
+    team,
+    invitesPending,
+    slug,
+    logoUrl,
+    retellSecret,
+    sendblueSecret,
+    recentQueries,
+    recentProgress,
+  ] = await Promise.all([
+    supabase.from("inventory").select("*", { count: "exact", head: true }),
+    supabase
+      .from("modules")
+      .select("*", { count: "exact", head: true })
+      .eq("is_published", true),
+    supabase.from("users").select("*", { count: "exact", head: true }),
+    supabase
+      .from("invites")
+      .select("*", { count: "exact", head: true })
+      .is("accepted_at", null),
+    loadOne("slug"),
+    loadOne("logo_url"),
+    loadOne("retell_webhook_secret"),
+    loadOne("sendblue_webhook_secret"),
+    supabase
+      .from("floor_queries")
+      .select("id, query_text, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("progress")
+      .select("module_id, user_id, completed_at, modules(title)")
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(5),
+  ]);
 
-  const store = storeData as {
-    slug?: string;
-    logo_url?: string;
-    retell_webhook_secret?: string;
-    sendblue_webhook_secret?: string;
-  } | null;
+  const store = {
+    slug: slug ?? undefined,
+    logo_url: logoUrl ?? undefined,
+    retell_webhook_secret: retellSecret ?? undefined,
+    sendblue_webhook_secret: sendblueSecret ?? undefined,
+  };
   const hdrs = await headers();
   const origin =
     hdrs.get("origin") ?? `http://${hdrs.get("host") ?? "localhost:3000"}`;
@@ -110,6 +123,7 @@ export default async function DashboardPage() {
     inventory: inventory.count ?? 0,
     modules: modules.count ?? 0,
     team: team.count ?? 0,
+    invitesPending: invitesPending.count ?? 0,
   };
 
   // Getting-started checklist — only shown to managers, only while incomplete.
@@ -130,18 +144,21 @@ export default async function DashboardPage() {
       href: "/trainer/new",
     },
     {
-      done: counts.team > 1,
+      // Tick the box the moment an invite is sent — don't make the owner
+      // wait for the teammate to actually accept before the checklist
+      // reflects progress.
+      done: counts.team > 1 || counts.invitesPending > 0,
       label: "Invite a teammate",
       href: "/team",
     },
     {
       done: Boolean(store?.retell_webhook_secret),
-      label: "Activate Megan Receptionist",
+      label: "Activate Gabby Receptionist",
       href: "/calls",
     },
     {
       done: Boolean(store?.sendblue_webhook_secret),
-      label: "Activate Megan Texting",
+      label: "Activate Gabby Texting",
       href: "/texts",
     },
   ];
@@ -288,7 +305,7 @@ export default async function DashboardPage() {
 
       <section>
         <h2 className="text-sm font-medium tracking-widest uppercase text-[color:var(--color-muted)] mb-4">
-          Megan
+          Megan &amp; Gabby
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => {

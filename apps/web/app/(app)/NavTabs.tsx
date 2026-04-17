@@ -15,6 +15,7 @@ const TABS = [
   { href: "/analytics", label: "Analytics", manager: true },
   { href: "/billing", label: "Billing", manager: true },
   { href: "/team", label: "Team", manager: true },
+  { href: "/affiliates", label: "Affiliates", manager: false },
 ];
 
 export function NavTabs({ isManager }: { isManager: boolean }) {

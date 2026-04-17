@@ -22,9 +22,9 @@ const PAGE_SIZE = 50;
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; category?: string }>;
 }) {
-  const { q = "", page = "1" } = await searchParams;
+  const { q = "", page = "1", category = "" } = await searchParams;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const from = (pageNum - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -38,6 +38,7 @@ export default async function InventoryPage({
         count: "exact",
       },
     )
+    .order("category", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true })
     .range(from, to);
 
@@ -47,11 +48,39 @@ export default async function InventoryPage({
       `name.ilike.%${trimmed}%,brand.ilike.%${trimmed}%,sku.ilike.%${trimmed}%`,
     );
   }
+  if (category) {
+    query = query.eq("category", category);
+  }
 
   const { data: items, count } = (await query) as {
     data: Item[] | null;
     count: number | null;
   };
+
+  // Pull the category index (name + count) once so we can render filter
+  // chips at the top. Cheap query: just category column, distinct via JS.
+  const { data: catRows } = await supabase
+    .from("inventory")
+    .select("category")
+    .not("category", "is", null);
+  const catCounts = new Map<string, number>();
+  for (const r of (catRows ?? []) as { category: string | null }[]) {
+    if (!r.category) continue;
+    catCounts.set(r.category, (catCounts.get(r.category) ?? 0) + 1);
+  }
+  const categoryList = Array.from(catCounts.entries()).sort(
+    (a, b) => b[1] - a[1],
+  );
+
+  // Group items under category headings for the visual "by category" view.
+  const grouped = new Map<string, Item[]>();
+  for (const i of items ?? []) {
+    const key = i.category || "Uncategorized";
+    const arr = grouped.get(key) ?? [];
+    arr.push(i);
+    grouped.set(key, arr);
+  }
+  const groupedList = Array.from(grouped.entries());
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -88,6 +117,9 @@ export default async function InventoryPage({
           placeholder="Search by name, brand, or SKU"
           className="flex-1 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm outline-none focus:border-[color:var(--color-gold)]"
         />
+        {category && (
+          <input type="hidden" name="category" value={category} />
+        )}
         <button
           type="submit"
           className="rounded-md border border-[color:var(--color-border)] px-4 text-sm hover:border-[color:var(--color-fg)]"
@@ -95,6 +127,40 @@ export default async function InventoryPage({
           Search
         </button>
       </form>
+
+      {categoryList.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href={`/inventory${q ? `?q=${encodeURIComponent(q)}` : ""}`}
+            className={`rounded-full text-xs px-3 py-1.5 border ${
+              !category
+                ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
+                : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+            }`}
+          >
+            All <span className="opacity-75 ml-1">{total}</span>
+          </Link>
+          {categoryList.map(([cat, n]) => {
+            const params = new URLSearchParams();
+            if (q) params.set("q", q);
+            params.set("category", cat);
+            const active = category === cat;
+            return (
+              <Link
+                key={cat}
+                href={`/inventory?${params.toString()}`}
+                className={`rounded-full text-xs px-3 py-1.5 border ${
+                  active
+                    ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
+                    : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+                }`}
+              >
+                {cat} <span className="opacity-75 ml-1">{n}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {total > 0 && <EnrichButton />}
 
@@ -112,79 +178,81 @@ export default async function InventoryPage({
         </div>
       ) : (
         <>
-          <div className="rounded-lg border border-[color:var(--color-border)] overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 text-xs text-[color:var(--color-muted)]">
-                  <tr>
-                    <th className="px-4 py-2 w-16"></th>
-                    <th className="text-left px-4 py-2 font-medium">Name</th>
-                    <th className="text-left px-4 py-2 font-medium">Category</th>
-                    <th className="text-left px-4 py-2 font-medium">SKU</th>
-                    <th className="text-right px-4 py-2 font-medium">Price</th>
-                    <th className="text-right px-4 py-2 font-medium">Stock</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(items ?? []).map((i) => (
-                    <tr
-                      key={i.id}
-                      className="border-t border-[color:var(--color-border)] hover:bg-zinc-50/60"
-                    >
-                      <td className="px-4 py-2">
-                        <Link
-                          href={`/inventory/${i.id}`}
-                          className="block w-10 h-10"
-                          aria-label={`View ${i.name}`}
+          <div className="space-y-6">
+            {groupedList.map(([cat, catItems]) => (
+              <div
+                key={cat}
+                className="rounded-lg border border-[color:var(--color-border)] overflow-hidden"
+              >
+                <div className="bg-zinc-50 px-4 py-2.5 flex items-baseline justify-between border-b border-[color:var(--color-border)]">
+                  <h3 className="text-xs font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
+                    {cat}
+                  </h3>
+                  <span className="text-[10px] text-[color:var(--color-muted)]">
+                    {catItems.length} item{catItems.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {catItems.map((i) => (
+                        <tr
+                          key={i.id}
+                          className="border-t border-[color:var(--color-border)] first:border-t-0 hover:bg-zinc-50/60"
                         >
-                          <ProductImage
-                            src={i.image_url}
-                            alt={i.name}
-                            brand={i.brand}
-                            size="sm"
-                          />
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2">
-                        <Link
-                          href={`/inventory/${i.id}`}
-                          className="block hover:text-[color:var(--color-gold)]"
-                        >
-                          <div className="font-medium">{i.name}</div>
-                          {i.brand && (
-                            <div className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)]">
-                              {i.brand}
-                            </div>
-                          )}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-[color:var(--color-muted)]">
-                        {i.category ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs text-[color:var(--color-muted)]">
-                        {i.sku ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {i.price != null ? `$${Number(i.price).toFixed(2)}` : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <span
-                          className={
-                            i.stock_qty <= 0
-                              ? "text-red-600"
-                              : i.stock_qty < 5
-                                ? "text-amber-600"
-                                : ""
-                          }
-                        >
-                          {i.stock_qty}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <td className="px-4 py-2 w-16">
+                            <Link
+                              href={`/inventory/${i.id}`}
+                              className="block w-10 h-10"
+                              aria-label={`View ${i.name}`}
+                            >
+                              <ProductImage
+                                src={i.image_url}
+                                alt={i.name}
+                                brand={i.brand}
+                                size="sm"
+                              />
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Link
+                              href={`/inventory/${i.id}`}
+                              className="block hover:text-[color:var(--color-gold)]"
+                            >
+                              <div className="font-medium">{i.name}</div>
+                              {i.brand && (
+                                <div className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)]">
+                                  {i.brand}
+                                </div>
+                              )}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2 font-mono text-xs text-[color:var(--color-muted)]">
+                            {i.sku ?? "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right">
+                            {i.price != null ? `$${Number(i.price).toFixed(2)}` : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right w-20">
+                            <span
+                              className={
+                                i.stock_qty <= 0
+                                  ? "text-red-600"
+                                  : i.stock_qty < 5
+                                    ? "text-amber-600"
+                                    : ""
+                              }
+                            >
+                              {i.stock_qty}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
 
           {totalPages > 1 && (
@@ -195,7 +263,7 @@ export default async function InventoryPage({
               <div className="flex gap-2">
                 {pageNum > 1 && (
                   <Link
-                    href={`/inventory?${new URLSearchParams({ q, page: String(pageNum - 1) })}`}
+                    href={`/inventory?${new URLSearchParams({ q, category, page: String(pageNum - 1) })}`}
                     className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 hover:border-[color:var(--color-fg)]"
                   >
                     Previous
@@ -203,7 +271,7 @@ export default async function InventoryPage({
                 )}
                 {pageNum < totalPages && (
                   <Link
-                    href={`/inventory?${new URLSearchParams({ q, page: String(pageNum + 1) })}`}
+                    href={`/inventory?${new URLSearchParams({ q, category, page: String(pageNum + 1) })}`}
                     className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 hover:border-[color:var(--color-fg)]"
                   >
                     Next

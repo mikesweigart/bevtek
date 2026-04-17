@@ -84,9 +84,65 @@ export default async function TextsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Texting</h1>
         <p className="text-sm text-[color:var(--color-muted)]">
-          iMessage conversations with your customers.
+          Two-way iMessage (blue bubble) with your customers — sent and
+          received from your dedicated business line.
         </p>
       </div>
+
+      {/* A2P transparency block — owners need to know texting takes a few
+          weeks of approval but everything else works in the meantime. */}
+      <section className="rounded-2xl border border-[color:var(--color-border)] bg-white p-6 space-y-4">
+        <div className="flex items-baseline justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-gold)] font-semibold">
+              Important — A2P 10DLC
+            </p>
+            <h2 className="text-xl font-semibold tracking-tight mt-1">
+              Two to three week approval window
+            </h2>
+          </div>
+          <span className="text-[11px] bg-amber-100 text-amber-800 rounded-full px-2.5 py-1 font-medium">
+            Regulatory requirement
+          </span>
+        </div>
+        <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
+          Every business that texts customers in the US has to go through a
+          one-time compliance registration called A2P 10DLC. This protects
+          shoppers from spam and keeps carriers from blocking your messages.
+          The good news: once you&rsquo;re approved, you have the highest
+          deliverability rate in the industry, and you never have to do it
+          again.
+        </p>
+        <div className="grid sm:grid-cols-3 gap-3 pt-1">
+          <TimelineStep
+            n="1"
+            title="You start the application"
+            body="~15 minutes. EIN, brand info, sample messages. We pre-fill 90% from your account."
+          />
+          <TimelineStep
+            n="2"
+            title="Carriers approve"
+            body="Takes 7–21 days. We run behind the scenes, no action needed from you."
+          />
+          <TimelineStep
+            n="3"
+            title="Gabby goes live"
+            body="Your dedicated number activates automatically the moment approval lands."
+          />
+        </div>
+        <div className="flex items-center gap-3 pt-2 flex-wrap">
+          <a
+            href="mailto:activate@bevtek.ai?subject=Start%20A2P%20application"
+            className="inline-flex items-center rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold"
+          >
+            Start A2P application
+          </a>
+          <p className="text-xs text-[color:var(--color-muted)]">
+            Everything else in BevTek keeps running while approval is
+            pending. You&rsquo;re not blocked.
+          </p>
+        </div>
+      </section>
 
       {migrationMissing && (
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
@@ -205,6 +261,28 @@ export default async function TextsPage() {
 
         </>
       )}
+    </div>
+  );
+}
+
+function TimelineStep({
+  n,
+  title,
+  body,
+}: {
+  n: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[color:var(--color-border)] p-4 space-y-1.5">
+      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[color:var(--color-gold)] text-white text-xs font-bold">
+        {n}
+      </span>
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="text-xs text-[color:var(--color-muted)] leading-relaxed">
+        {body}
+      </p>
     </div>
   );
 }
