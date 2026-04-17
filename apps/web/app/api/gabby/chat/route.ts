@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     storeId?: string;
     messages?: ChatMessage[];
     userMessage?: string;
+    sessionId?: string;
   };
 
   try {
@@ -148,10 +149,27 @@ export async function POST(req: Request) {
       inventory: products,
       storeName: store.name,
     });
+
+    // Fire-and-forget: log the conversation turn so owners can review
+    // real customer chats in the Conversations dashboard. Never block the
+    // user's reply on logging — if it fails, Gabby still answers.
+    const sessionId = (body.sessionId ?? "").trim() || `anon-${Date.now()}`;
+    void supabase
+      .from("gabby_conversations")
+      .insert({
+        store_id: store.id,
+        session_id: sessionId.slice(0, 100),
+        user_message: userMessage.slice(0, 2000),
+        assistant_message: aiResponse.slice(0, 4000),
+        inventory_count: products.length,
+      })
+      .then(() => {});
+
     return json({
       error: null,
       messages: [...messages, { role: "assistant", content: aiResponse }],
       inventoryCount: products.length,
+      sessionId,
     });
   } catch (e) {
     return json(

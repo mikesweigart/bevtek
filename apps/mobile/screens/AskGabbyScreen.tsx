@@ -44,6 +44,11 @@ export default function AskGabbyScreen() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  // Stable per-mount session id so the owner's Conversations dashboard
+  // groups this whole chat thread under one session, not one row per turn.
+  const sessionIdRef = useRef<string>(
+    `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+  );
   const scrollRef = useRef<ScrollView>(null);
 
   function toggleSpeak(idx: number, text: string) {
@@ -117,7 +122,12 @@ export default function AskGabbyScreen() {
         const res = await fetch(`${WEB_BASE}/api/gabby/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ storeId, messages, userMessage: msg }),
+          body: JSON.stringify({
+            storeId,
+            messages,
+            userMessage: msg,
+            sessionId: sessionIdRef.current,
+          }),
         });
         const text = await res.text();
         let data: any = null;

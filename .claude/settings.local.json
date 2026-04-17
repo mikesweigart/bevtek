@@ -52,7 +52,13 @@
       "WebFetch(domain:unsplash.com)",
       "WebFetch(domain:api.unsplash.com)",
       "WebFetch(domain:www.google.com)",
-      "Bash(Select-String \"env\")"
+      "Bash(Select-String \"env\")",
+      "Bash(node -e \"console.log\\(Object.keys\\(require\\('./package.json'\\).dependencies||{}\\).filter\\(k=>k.includes\\('notif'\\)||k.includes\\('expo-device'\\)||k.includes\\('expo-constants'\\)\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(curl -sS -i -X POST https://bevtek-web.vercel.app/api/gabby/chat -H \"Content-Type: application/json\" -d '{\"storeId\":\"test\",\"userMessage\":\"hi\"}')",
+      "Bash(curl -sS -i https://bevtek-web.vercel.app/api/admin/backfill-images)",
+      "Bash(find /c/Users/Admin/Desktop/BevTek -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"resend\\\\|sendgrid\\\\|nodemailer\\\\|SMTP\\\\|sendEmail\" {} \\\\;)",
+      "Bash(find /c/Users/Admin/Desktop/BevTek/supabase/migrations -name \"*.sql\" -exec grep -l \"hold_requests\" {} \\\\;)",
+      "Bash(xargs cat *)"
     ]
   }
 }

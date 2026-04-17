@@ -213,6 +213,62 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {shopperUrl && (
+        <section className="rounded-2xl border border-[color:var(--color-border)] bg-gradient-to-br from-white to-zinc-50 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
+          <div className="shrink-0 p-3 bg-white rounded-xl border border-[color:var(--color-border)]">
+            {/* Free QR image service — no install, no CSP issues. Encodes the
+                store's public shopper URL so customers scan → mobile web app. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${encodeURIComponent(
+                shopperUrl,
+              )}`}
+              alt="Scan to shop"
+              width={180}
+              height={180}
+              className="block"
+            />
+          </div>
+          <div className="flex-1 space-y-3 text-center sm:text-left">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Your in-store QR code
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Customers scan. Gabby helps. You sell.
+            </h2>
+            <p className="text-sm text-[color:var(--color-muted)] max-w-lg">
+              Tape this at the counter or on the shelf. Anyone with a phone
+              scans and lands in your store&rsquo;s mobile shop &mdash; no app
+              download, no login.
+            </p>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=4&data=${encodeURIComponent(
+                  shopperUrl,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download="bevtek-qr.png"
+                className="inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold text-white bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)]"
+              >
+                Download high-res
+              </a>
+              <a
+                href={shopperUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+              >
+                Open storefront
+              </a>
+              <span className="text-xs text-[color:var(--color-muted)] font-mono truncate max-w-[260px]">
+                {shopperUrl.replace(/^https?:\/\//, "")}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-3 sm:grid-cols-3">
         {stats.map((s) => (
           <Link

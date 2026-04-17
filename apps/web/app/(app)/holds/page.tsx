@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { flushHoldAlertsForCurrentStore } from "@/lib/email/flushHoldAlerts";
 import {
   confirmHoldAction,
   pickupHoldAction,
@@ -57,6 +58,16 @@ export default async function HoldsPage({
 }) {
   const { filter = "active" } = await searchParams;
   const supabase = await createClient();
+
+  // Opportunistic notification flush — if any new holds came in since the
+  // last time staff viewed this page, email the owner now. Awaited so the
+  // send actually completes on serverless; swallow failures so the page
+  // always renders.
+  try {
+    await flushHoldAlertsForCurrentStore();
+  } catch {
+    // best-effort; never block the queue view
+  }
 
   let query = supabase
     .from("hold_requests")

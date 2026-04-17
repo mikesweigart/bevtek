@@ -19,6 +19,7 @@ export default async function Home() {
       <Hero />
       <Problem />
       <MeetMegan />
+      <MobileAppSpotlight />
       <Showcase />
       <ValueStack />
       <HowItWorks />
@@ -155,6 +156,254 @@ function MeetMegan() {
         </p>
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MobileAppSpotlight — the "look at how real this is" section. Three live
+// phone-frame previews: Gabby chat (customer), Hold requests (customer),
+// and the employee leaderboard / training dashboard. Zero external images;
+// everything is styled divs so it renders instantly.
+// ---------------------------------------------------------------------------
+function MobileAppSpotlight() {
+  return (
+    <section className="px-6 py-16 sm:py-24 relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(200,152,78,0.08), transparent 60%)",
+        }}
+      />
+      <div className="relative max-w-6xl mx-auto space-y-12">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <p className="text-xs tracking-widest uppercase text-[color:var(--color-gold)] font-semibold">
+            New · Mobile apps in customer beta
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            Gabby lives in every customer&rsquo;s pocket.
+          </h2>
+          <p className="text-[color:var(--color-muted)] leading-relaxed">
+            Real-time inventory. Voice-enabled AI concierge. One-tap holds.
+            Print a QR code, tape it at the counter, and your store is open
+            on every phone that walks in.
+          </p>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-3 items-start">
+          <PhoneFrame title="Gabby · Customer" accent>
+            <GabbyChatPreview />
+          </PhoneFrame>
+          <PhoneFrame title="Hold requests">
+            <HoldsPreview />
+          </PhoneFrame>
+          <PhoneFrame title="Employee · Trainer">
+            <TrainerPreview />
+          </PhoneFrame>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <FeatureCallout
+            kicker="Scan & Shop"
+            title="Your own QR code"
+            body="Print it. Tape it anywhere. Customers scan, Gabby greets them, they buy."
+          />
+          <FeatureCallout
+            kicker="Voice-first"
+            title="Gabby speaks out loud"
+            body="Tap Listen and she reads her recommendation — hands-free while you stock."
+          />
+          <FeatureCallout
+            kicker="Closes the loop"
+            title="Customer holds, instantly"
+            body="Shopper hits Hold. Owner gets an email. Item is waiting at the counter."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PhoneFrame({
+  title,
+  accent,
+  children,
+}: {
+  title: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className={`relative w-[280px] h-[560px] rounded-[40px] p-[10px] shadow-2xl ${
+          accent
+            ? "bg-gradient-to-b from-[color:var(--color-gold)] to-[#9a7237]"
+            : "bg-zinc-900"
+        }`}
+      >
+        <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-[90px] h-[22px] bg-black rounded-full z-10" />
+        <div className="w-full h-full rounded-[32px] bg-[#FBF7F0] overflow-hidden relative">
+          {children}
+        </div>
+      </div>
+      <p className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)]">
+        {title}
+      </p>
+    </div>
+  );
+}
+
+function GabbyChatPreview() {
+  return (
+    <div className="flex flex-col h-full pt-12 pb-4 px-4 text-[13px]">
+      <div className="text-center pb-3 border-b border-zinc-200">
+        <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[color:var(--color-gold)] text-white font-bold text-sm">
+          G
+        </div>
+        <p className="mt-1 font-semibold">Hi, I&rsquo;m Gabby</p>
+        <p className="text-[10px] italic text-[color:var(--color-gold)]">
+          Find it, Pair it, Love it
+        </p>
+      </div>
+      <div className="flex-1 overflow-hidden space-y-2 mt-3">
+        <div className="ml-auto max-w-[80%] bg-[color:var(--color-gold)] text-white rounded-2xl rounded-br-sm px-3 py-2 text-[12px]">
+          What bourbon pairs with steak tonight?
+        </div>
+        <div className="max-w-[90%] bg-white rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] shadow-sm border border-zinc-100">
+          Great call! I&rsquo;d grab the <b>Woodford Reserve</b> at{" "}
+          <span className="text-[color:var(--color-gold)] font-semibold">
+            $42
+          </span>{" "}
+          — rich caramel notes cut a char-grilled ribeye beautifully.
+          <div className="mt-2 text-[10px] bg-zinc-50 text-zinc-500 rounded px-2 py-1 inline-block">
+            🔊 Listen
+          </div>
+        </div>
+        <div className="ml-auto max-w-[80%] bg-[color:var(--color-gold)] text-white rounded-2xl rounded-br-sm px-3 py-2 text-[12px]">
+          Can you hold one for me?
+        </div>
+      </div>
+      <div className="mt-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-[11px] text-zinc-400 flex items-center justify-between">
+        Ask anything… <span className="text-[color:var(--color-gold)]">▶</span>
+      </div>
+    </div>
+  );
+}
+
+function HoldsPreview() {
+  const items = [
+    { name: "Woodford Reserve", sub: "Bourbon · $42", status: "Ready" },
+    { name: "Caymus Cabernet", sub: "Red wine · $89", status: "Pending" },
+    { name: "Casamigos Blanco", sub: "Tequila · $52", status: "Picked up" },
+  ];
+  const pill: Record<string, string> = {
+    Ready: "bg-green-100 text-green-700",
+    Pending: "bg-amber-100 text-amber-700",
+    "Picked up": "bg-zinc-100 text-zinc-500",
+  };
+  return (
+    <div className="flex flex-col h-full pt-12 pb-4 px-4">
+      <div className="pb-3 border-b border-zinc-200">
+        <p className="text-[10px] tracking-widest uppercase text-zinc-500">
+          My Holds
+        </p>
+        <h3 className="text-lg font-semibold">3 items waiting</h3>
+      </div>
+      <div className="flex-1 space-y-2 mt-3">
+        {items.map((it) => (
+          <div
+            key={it.name}
+            className="bg-white rounded-xl border border-zinc-100 p-3 shadow-sm flex items-center justify-between"
+          >
+            <div>
+              <p className="text-[13px] font-semibold">{it.name}</p>
+              <p className="text-[11px] text-zinc-500">{it.sub}</p>
+            </div>
+            <span
+              className={`text-[10px] font-medium rounded-full px-2 py-1 ${pill[it.status]}`}
+            >
+              {it.status}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl bg-[color:var(--color-gold)] text-white text-center py-3 text-[13px] font-semibold shadow">
+        Browse the shop →
+      </div>
+    </div>
+  );
+}
+
+function TrainerPreview() {
+  return (
+    <div className="flex flex-col h-full pt-12 pb-4 px-4">
+      <div className="pb-3 border-b border-zinc-200">
+        <p className="text-[10px] tracking-widest uppercase text-zinc-500">
+          Welcome back
+        </p>
+        <h3 className="text-lg font-semibold">Alex</h3>
+        <div className="flex items-center gap-3 mt-2">
+          <span className="text-[11px] bg-[color:var(--color-gold)] text-white rounded-full px-2 py-0.5 font-semibold">
+            ⭐ 142
+          </span>
+          <span className="text-[11px] text-zinc-500">🔥 6-day streak</span>
+        </div>
+      </div>
+      <div className="flex-1 mt-3 space-y-2 overflow-hidden">
+        <div className="rounded-xl bg-zinc-900 text-white p-3">
+          <p className="text-[10px] tracking-widest uppercase text-[color:var(--color-gold)]">
+            Team leaderboard
+          </p>
+          <p className="text-sm font-semibold mt-1">You&rsquo;re #2 this week</p>
+        </div>
+        <p className="text-[10px] tracking-widest uppercase text-zinc-500 pt-1">
+          Pick up where you left off
+        </p>
+        <div className="bg-white rounded-xl border border-zinc-100 p-3 shadow-sm">
+          <p className="text-[12px] font-semibold">Bourbon 101</p>
+          <div className="mt-2 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+            <div className="h-full w-[60%] bg-[color:var(--color-gold)]" />
+          </div>
+          <p className="text-[10px] text-zinc-500 mt-1">3/5 lessons</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-white rounded-xl border border-zinc-100 p-2.5 text-center">
+            <p className="text-[18px]">🍷</p>
+            <p className="text-[10px] font-semibold mt-1">Wine</p>
+            <p className="text-[9px] text-zinc-500">8/12</p>
+          </div>
+          <div className="bg-white rounded-xl border border-zinc-100 p-2.5 text-center">
+            <p className="text-[18px]">🥃</p>
+            <p className="text-[10px] font-semibold mt-1">Spirits</p>
+            <p className="text-[9px] text-zinc-500">5/11</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCallout({
+  kicker,
+  title,
+  body,
+}: {
+  kicker: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-[color:var(--color-border)] bg-white p-5 space-y-2">
+      <p className="text-[10px] tracking-widest uppercase text-[color:var(--color-gold)] font-semibold">
+        {kicker}
+      </p>
+      <p className="text-base font-semibold">{title}</p>
+      <p className="text-sm text-[color:var(--color-muted)] leading-relaxed">
+        {body}
+      </p>
+    </div>
   );
 }
 
@@ -565,7 +814,7 @@ const FAQS = [
   },
   {
     q: "Is there an iOS or Android app?",
-    a: "Yes — native iOS and Android apps are in development and launching this summer. Until then, Megan works beautifully on the mobile web (no install needed). Everyone on your team just opens a link on their phone; customers use your storefront the same way.",
+    a: "Yes — our native iOS and Android apps are live in customer beta right now. Staff get the Trainer + floor-side Assistant; customers get Gabby, your mobile storefront, and one-tap holds. Public App Store / Play Store launch this summer. Existing users can get beta access on request.",
   },
   {
     q: "What POS systems do you integrate with?",
