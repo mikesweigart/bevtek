@@ -5,6 +5,8 @@ import { colors } from "../lib/theme";
 import { CATEGORY_BADGES } from "../lib/levels";
 import { ListenButton } from "../components/ListenButton";
 import { StoreProducts } from "../components/StoreProducts";
+import { ShopLink } from "../components/ShopLink";
+import { QuizCelebration } from "../components/QuizCelebration";
 import { getModuleImage } from "../lib/images";
 
 type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
@@ -45,6 +47,7 @@ export default function ExploreScreen() {
   const [revealed, setRevealed] = useState<boolean[]>([]);
   const [result, setResult] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [storeSlug, setStoreSlug] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -57,6 +60,12 @@ export default function ExploreScreen() {
     const map = new Map<string, Progress>();
     for (const p of (progRes.data as Progress[]) ?? []) map.set(p.module_id, p);
     setProgress(map);
+    // Load store slug for shop links
+    const { data: profile } = await supabase.from("users").select("store_id").eq("id", user.id).maybeSingle();
+    if ((profile as any)?.store_id) {
+      const { data: store } = await supabase.from("stores").select("slug").eq("id", (profile as any).store_id).maybeSingle();
+      setStoreSlug((store as any)?.slug ?? null);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -125,17 +134,25 @@ export default function ExploreScreen() {
           title="From your store"
         />
 
+        {/* Shop link — connects to the store's Megan Shopper */}
+        <ShopLink
+          storeSlug={storeSlug}
+          searchQuery={extractSearchTerms(selected.title, selected.category_group)[0] ?? selected.title}
+        />
+
         {result ? (
-          <View style={{ borderWidth: 2, borderColor: result.passed ? colors.gold : colors.border, borderRadius: 16, padding: 24, alignItems: "center", marginBottom: 24 }}>
-            <Text style={{ fontSize: 40 }}>{result.passed ? "⭐" : "📝"}</Text>
-            <Text style={{ fontSize: 24, fontWeight: "700", marginTop: 8 }}>{result.correct}/{result.total} correct</Text>
-            {result.passed && result.stars_new > 0 && <Text style={{ fontSize: 16, marginTop: 4 }}>+{result.stars_new} stars earned</Text>}
-            {!result.passed && <Text style={{ fontSize: 13, color: colors.muted, marginTop: 8, textAlign: "center" }}>Review and try again for stars.</Text>}
-            <TouchableOpacity style={{ backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginTop: 16 }}
-              onPress={() => { setResult(null); setAnswers(Array(quizQs.length).fill(null)); setRevealed(Array(quizQs.length).fill(false)); }}>
-              <Text style={{ color: "#fff", fontWeight: "700" }}>Try again</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+          <QuizCelebration
+            passed={result.passed}
+            correct={result.correct}
+            total={result.total}
+            starsNew={result.stars_new ?? 0}
+          />
+          <TouchableOpacity style={{ backgroundColor: colors.gold, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, alignSelf: "center", marginBottom: 24 }}
+            onPress={() => { setResult(null); setAnswers(Array(quizQs.length).fill(null)); setRevealed(Array(quizQs.length).fill(false)); }}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Try again</Text>
+          </TouchableOpacity>
+          </>
         ) : quizQs.length > 0 ? (
           <>
             <Text style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: colors.muted, marginBottom: 16 }}>Quick check</Text>
