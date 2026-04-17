@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "./lib/supabase";
 import type { Session } from "@supabase/supabase-js";
@@ -218,15 +219,17 @@ export default function App() {
   const isEmployee = role === "owner" || role === "manager" || role === "staff";
 
   return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      {!session ? (
-        <AuthNavigator />
-      ) : isEmployee ? (
-        <EmployeeTabs />
-      ) : (
-        <CustomerTabs />
-      )}
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style="dark" />
+        {!session ? (
+          <AuthNavigator />
+        ) : isEmployee ? (
+          <EmployeeTabs />
+        ) : (
+          <CustomerTabs />
+        )}
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

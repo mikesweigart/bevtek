@@ -113,6 +113,21 @@ export default function ExploreScreen() {
       }
     }, [route.params?.initialFilter])
   );
+
+  // Deep-link: tapping a Featured Module card on Home passes moduleId and
+  // we auto-open it. Cleared after consumption so re-entering the tab
+  // doesn't re-trigger.
+  useFocusEffect(
+    useCallback(() => {
+      const mid = route.params?.moduleId;
+      if (!mid || modules.length === 0) return;
+      const m = modules.find((x) => x.id === mid);
+      if (m) {
+        openModule(m);
+        route.params.moduleId = undefined;
+      }
+    }, [route.params?.moduleId, modules])
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<Module | null>(null);
 
@@ -253,11 +268,15 @@ export default function ExploreScreen() {
   // List view
   return (
     <View style={s.container}>
-      <Text style={s.count}>{filtered.length} modules available</Text>
+      <View style={s.heroHeader}>
+        <Text style={s.heroName}>Megan</Text>
+        <Text style={s.heroTagline}>The Ultimate Retail Trainer, Right when you Need it!</Text>
+        <Text style={s.count}>{filtered.length} module{filtered.length === 1 ? "" : "s"} available</Text>
+      </View>
       <View style={s.searchWrap}>
         <TextInput style={s.searchInput} placeholder="Search modules..." placeholderTextColor={colors.muted} value={search} onChangeText={setSearch} />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipScroll} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipScroll} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: "center" }}>
         {categories.map((cat) => {
           const active = cat === filter;
           return (
@@ -292,11 +311,14 @@ export default function ExploreScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  count: { paddingHorizontal: 16, paddingTop: 8, fontSize: 13, color: colors.muted },
+  heroHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  heroName: { fontSize: 28, fontWeight: "700", color: colors.fg, letterSpacing: -0.5 },
+  heroTagline: { fontSize: 13, color: colors.gold, fontStyle: "italic", marginTop: 2, fontWeight: "500" },
+  count: { paddingTop: 10, fontSize: 12, color: colors.muted, letterSpacing: 0.5, textTransform: "uppercase" },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 12 },
   searchInput: { backgroundColor: "#F3F4F6", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: colors.fg },
-  chipScroll: { maxHeight: 48, marginBottom: 4 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  chipScroll: { flexGrow: 0, marginBottom: 8, paddingVertical: 4 },
+  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, minHeight: 36, justifyContent: "center" },
   chipActive: { backgroundColor: colors.gold, borderColor: colors.gold },
   chipText: { fontSize: 13, fontWeight: "600", color: colors.fg },
   chipTextActive: { color: "#fff" },

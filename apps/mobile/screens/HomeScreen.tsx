@@ -39,7 +39,17 @@ export default function HomeScreen() {
   const level = levelForStars(game.total_stars);
   const completedCount = Array.from(progress.values()).filter((p) => p.status === "completed").length;
   const featured = modules.slice(0, 8);
-  const categories = Array.from(new Set(modules.map((m) => m.category_group).filter(Boolean))) as string[];
+  const categoryStats = (() => {
+    const counts = new Map<string, { total: number; done: number }>();
+    for (const m of modules) {
+      const cat = m.category_group ?? "other";
+      const cur = counts.get(cat) ?? { total: 0, done: 0 };
+      cur.total += 1;
+      if (progress.get(m.id)?.status === "completed") cur.done += 1;
+      counts.set(cat, cur);
+    }
+    return Array.from(counts.entries()).map(([cat, c]) => ({ cat, ...c }));
+  })();
 
   return (
     <ScrollView style={s.container} contentContainerStyle={s.content}
@@ -66,8 +76,10 @@ export default function HomeScreen() {
 
       <View style={s.section}>
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Featured Modules</Text>
-          <Text style={s.sectionCount}>{featured.length}</Text>
+          <Text style={s.sectionTitle}>Pick up where you left off</Text>
+          <TouchableOpacity onPress={() => nav.navigate("Explore", { initialFilter: "all" })}>
+            <Text style={s.seeAll}>See all</Text>
+          </TouchableOpacity>
         </View>
         <FlatList horizontal showsHorizontalScrollIndicator={false} data={featured} keyExtractor={(m) => m.id}
           contentContainerStyle={{ paddingRight: 20 }}
@@ -76,7 +88,7 @@ export default function HomeScreen() {
             const badge = CATEGORY_BADGES[m.category_group ?? "spirits"];
             const img = getModuleImage(m.title, m.category_group);
             return (
-              <TouchableOpacity activeOpacity={0.85} style={s.featCard} onPress={() => nav.navigate("Explore", { initialFilter: m.category_group ?? "all" })}>
+              <TouchableOpacity activeOpacity={0.85} style={s.featCard} onPress={() => nav.navigate("Explore", { moduleId: m.id })}>
                 <Image source={{ uri: img }} style={s.featImage} resizeMode="cover" />
                 <View style={s.featOverlay}>
                   {badge && <View style={[s.catBadge, { backgroundColor: badge.bg }]}><Text style={[s.catBadgeText, { color: badge.color }]}>{badge.label}</Text></View>}
@@ -93,21 +105,40 @@ export default function HomeScreen() {
         />
       </View>
 
-      {categories.length > 0 && (
+      {categoryStats.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Browse by category</Text>
-          <View style={s.chipRow}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                activeOpacity={0.7}
-                onPress={() => nav.navigate("Explore", { initialFilter: cat })}
-                style={[s.chip, { borderColor: colors.gold }]}
-              >
-                <View style={[s.chipDot, { backgroundColor: colors.gold }]} />
-                <Text style={s.chipLabel}>{CATEGORY_BADGES[cat]?.label ?? cat}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Browse by category</Text>
+            <TouchableOpacity onPress={() => nav.navigate("Explore", { initialFilter: "all" })}>
+              <Text style={s.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.catGrid}>
+            {categoryStats.map(({ cat, total, done }) => {
+              const badge = CATEGORY_BADGES[cat];
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  activeOpacity={0.85}
+                  onPress={() => nav.navigate("Explore", { initialFilter: cat })}
+                  style={s.catTile}
+                >
+                  <View style={[s.catAccent, { backgroundColor: badge?.bg ?? "#FBF7F0" }]}>
+                    <Text style={[s.catAccentText, { color: badge?.color ?? colors.gold }]}>
+                      {(badge?.label ?? cat).slice(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={s.catName}>{badge?.label ?? cat}</Text>
+                  <Text style={s.catCount}>
+                    {done}/{total} complete
+                  </Text>
+                  <View style={s.catProgressBg}>
+                    <View style={[s.catProgressFill, { width: `${pct}%` }]} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       )}
@@ -148,10 +179,29 @@ const s = StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: "700" },
   sectionCount: { fontSize: 14, color: colors.muted },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, gap: 6 },
-  chipDot: { width: 6, height: 6, borderRadius: 3 },
-  chipLabel: { fontSize: 13, fontWeight: "600" },
+  seeAll: { fontSize: 13, color: colors.gold, fontWeight: "600" },
+  catGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  catTile: {
+    width: (SCREEN_W - 40 - 10) / 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 11,
+    backgroundColor: "#fff",
+  },
+  catAccent: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  catAccentText: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  catName: { fontSize: 13, fontWeight: "700", color: colors.fg },
+  catCount: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  catProgressBg: { height: 3, backgroundColor: "#F3F4F6", borderRadius: 2, marginTop: 8, overflow: "hidden" },
+  catProgressFill: { height: "100%" as any, backgroundColor: colors.gold, borderRadius: 2 },
   featCard: { width: CARD_W, marginRight: 12, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg },
   featImage: { width: "100%", height: CARD_W * 0.6, backgroundColor: "#F3F4F6" },
   featOverlay: { position: "absolute", top: 10, left: 10, flexDirection: "row", gap: 6 },

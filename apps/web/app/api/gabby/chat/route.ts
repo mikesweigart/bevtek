@@ -11,7 +11,7 @@ const CORS = {
 };
 
 function json(body: unknown, init: { status?: number } = {}) {
-  return json(body, { status: init.status ?? 200, headers: CORS });
+  return NextResponse.json(body, { status: init.status ?? 200, headers: CORS });
 }
 
 /**
