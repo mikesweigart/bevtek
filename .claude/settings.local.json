@@ -48,7 +48,11 @@
       "Bash(pnpm add:*)",
       "Bash(npx --yes create-expo-app@latest apps/mobile --template blank-typescript --no-install)",
       "Bash(export PATH=\"/c/Users/Admin/AppData/Roaming/npm:/c/Program Files/nodejs:$PATH\" cd \"/c/Users/Admin/Desktop/BevTek\")",
-      "Bash(npx expo:*)"
+      "Bash(npx expo:*)",
+      "WebFetch(domain:unsplash.com)",
+      "WebFetch(domain:api.unsplash.com)",
+      "WebFetch(domain:www.google.com)",
+      "Bash(Select-String \"env\")"
     ]
   }
 }

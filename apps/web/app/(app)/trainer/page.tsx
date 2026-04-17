@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { levelForStars, CATEGORY_GROUPS, CATEGORY_ORDER } from "@/lib/trainer/levels";
+import { BackfillImagesButton } from "./BackfillImagesButton";
 
 type ModuleRow = {
   id: string;
@@ -177,6 +178,9 @@ export default async function TrainerPage() {
           </ol>
         </section>
       )}
+
+      {/* Manager tools */}
+      {isManager && <BackfillImagesButton />}
 
       {/* Module library, grouped */}
       <section className="space-y-8">

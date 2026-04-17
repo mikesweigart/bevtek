@@ -9,7 +9,7 @@ import { MarkdownText } from "../components/MarkdownText";
 import { QuizCelebration } from "../components/QuizCelebration";
 import { getModuleImage } from "../lib/images";
 
-type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null };
+type Module = { id: string; title: string; description: string | null; category_group: string | null; star_reward: number; duration_minutes: number | null; hero_image_url: string | null };
 type Progress = { module_id: string; status: string; stars_earned: number };
 
 /** Per-module ingredient keyword overrides. Cocktails search for their actual components. */
@@ -116,7 +116,7 @@ export default function ExploreScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const [modRes, progRes] = await Promise.all([
-      supabase.from("modules").select("id, title, description, category_group, star_reward, duration_minutes").eq("is_published", true).order("category_group").order("position"),
+      supabase.from("modules").select("id, title, description, category_group, star_reward, duration_minutes, hero_image_url").eq("is_published", true).order("category_group").order("position"),
       supabase.from("progress").select("module_id, status, stars_earned").eq("user_id", user.id),
     ]);
     setModules((modRes.data as Module[]) ?? []);
@@ -170,7 +170,7 @@ export default function ExploreScreen() {
 
   // Detail view
   if (selected) {
-    const img = getModuleImage(selected.title, selected.category_group);
+    const img = selected.hero_image_url ?? getModuleImage(selected.title, selected.category_group);
     return (
       <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20 }}>
         <TouchableOpacity onPress={() => { setSelected(null); load(); }} style={{ marginBottom: 16 }}>
@@ -260,7 +260,7 @@ export default function ExploreScreen() {
         renderItem={({ item: m }) => {
           const done = progress.get(m.id)?.status === "completed";
           const badge = CATEGORY_BADGES[m.category_group ?? "spirits"];
-          const img = getModuleImage(m.title, m.category_group);
+          const img = m.hero_image_url ?? getModuleImage(m.title, m.category_group);
           return (
             <TouchableOpacity style={s.row} activeOpacity={0.7} onPress={() => openModule(m)}>
               <Image source={{ uri: img }} style={s.thumb} resizeMode="cover" />
