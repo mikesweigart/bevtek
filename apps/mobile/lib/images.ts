@@ -20,7 +20,7 @@ export const MODULE_IMAGES: Record<string, string> = {
   // Wine — France
   "Bordeaux Reds": `${U}/photo-1510812431401-41d2bd2722f3?w=200&q=80`,
   "Burgundy — Pinot Noir": `${U}/photo-1474722883778-792e7990302f?w=200&q=80`,
-  "French Chardonnay": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
+  "French Chardonnay": `${U}/photo-1566754966849-fa5bffacb97b?w=200&q=80`,
   "Champagne & Sparkling": `${U}/photo-1549439602-43ebca2327af?w=200&q=80`,
   "Rhône Valley": `${U}/photo-1566995541428-f05db4c4f829?w=200&q=80`,
   "Sancerre & Loire": `${U}/photo-1558001373-7b93ee48ffa0?w=200&q=80`,
@@ -64,7 +64,7 @@ export const MODULE_IMAGES: Record<string, string> = {
   "Reading a Beer Label": `${U}/photo-1535958636474-b021ee887b13?w=200&q=80`,
 
   // Cocktails
-  "Old Fashioned": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Old Fashioned": `${U}/photo-1536935338788-846bb9981813?w=200&q=80`,
   "Negroni & Variations": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
   "Whiskey Sour Family": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
   "Martini & Variations": `${U}/photo-1550391327-1f4ff5c42e81?w=200&q=80`,
@@ -79,7 +79,7 @@ export const MODULE_IMAGES: Record<string, string> = {
   "Moscow Mule": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
   "Mojito": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
   "Daiquiri": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
-  "Manhattan": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,
+  "Manhattan": `${U}/photo-1536935338788-846bb9981813?w=200&q=80`,
   "Cosmopolitan": `${U}/photo-1560148218-1a83060f7b32?w=200&q=80`,
   "French 75": `${U}/photo-1549439602-43ebca2327af?w=200&q=80`,
   "Mai Tai": `${U}/photo-1514362545857-3bc16c4c7d1b?w=200&q=80`,

@@ -86,7 +86,9 @@ export default function ExploreScreen() {
       supabase.from("quiz_questions").select("id, question, options, correct_index, explanation").eq("module_id", m.id).order("position"),
     ]);
     const c = cRes.data as any;
-    setContent(c?.content?.body ?? "");
+    // content was migrated from JSON ({body}) to plain markdown TEXT — support both.
+    const raw = c?.content;
+    setContent(typeof raw === "string" ? raw : (raw?.body ?? ""));
     const qs = (qRes.data ?? []).map((q: any) => ({ ...q, options: Array.isArray(q.options) ? q.options : [] }));
     setQuizQs(qs);
     setAnswers(Array(qs.length).fill(null));
