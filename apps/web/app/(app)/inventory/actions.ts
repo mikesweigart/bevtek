@@ -24,6 +24,7 @@ export type PreviewState = {
     mapping: Record<string, string>;
     sample: InventoryRowInput[];
     total: number;
+    skippedZeroStock: number;
     rowsB64: string; // base64-encoded JSON of all parsed rows, for the import step
   } | null;
 };
@@ -77,10 +78,19 @@ export async function previewUploadAction(
     };
   }
 
+  // Parse every row, but drop anything with zero (or missing) on-hand stock.
+  // A store's export often includes discontinued/out-of-stock SKUs we don't
+  // want polluting recommendations or the shopper catalog.
   const parsed: InventoryRowInput[] = [];
+  let skippedZeroStock = 0;
   for (const r of rows) {
     const m = mapRow(r, headers, mapping);
-    if (m) parsed.push(m);
+    if (!m) continue;
+    if (!m.stock_qty || m.stock_qty <= 0) {
+      skippedZeroStock++;
+      continue;
+    }
+    parsed.push(m);
   }
 
   return {
@@ -90,6 +100,7 @@ export async function previewUploadAction(
       mapping: mapping as Record<string, string>,
       sample: parsed.slice(0, 10),
       total: parsed.length,
+      skippedZeroStock,
       rowsB64: Buffer.from(JSON.stringify(parsed)).toString("base64"),
     },
   };

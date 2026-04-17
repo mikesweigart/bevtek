@@ -99,6 +99,13 @@ export function ImportWizard() {
             <div className="bg-zinc-50 px-4 py-2 text-xs text-[color:var(--color-muted)]">
               Showing {pState.preview.sample.length} of {pState.preview.total}{" "}
               rows
+              {pState.preview.skippedZeroStock > 0 && (
+                <span className="ml-2 text-amber-700">
+                  · skipped {pState.preview.skippedZeroStock} row
+                  {pState.preview.skippedZeroStock === 1 ? "" : "s"} with 0
+                  stock
+                </span>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
