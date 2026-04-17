@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Dimensions, FlatList } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Image, Dimensions, FlatList, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { levelForStars, CATEGORY_BADGES } from "../lib/levels";
@@ -12,6 +13,7 @@ type Module = { id: string; title: string; description: string | null; category_
 type Progress = { module_id: string; status: string; stars_earned: number };
 
 export default function HomeScreen() {
+  const nav = useNavigation<any>();
   const [game, setGame] = useState({ total_stars: 0, current_streak_days: 0 });
   const [modules, setModules] = useState<Module[]>([]);
   const [progress, setProgress] = useState<Map<string, Progress>>(new Map());
@@ -62,20 +64,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {categories.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Categories</Text>
-          <View style={s.chipRow}>
-            {categories.map((cat) => (
-              <View key={cat} style={[s.chip, { borderColor: colors.gold }]}>
-                <View style={[s.chipDot, { backgroundColor: colors.gold }]} />
-                <Text style={s.chipLabel}>{CATEGORY_BADGES[cat]?.label ?? cat}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
       <View style={s.section}>
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Featured Modules</Text>
@@ -88,7 +76,7 @@ export default function HomeScreen() {
             const badge = CATEGORY_BADGES[m.category_group ?? "spirits"];
             const img = getModuleImage(m.title, m.category_group);
             return (
-              <View style={s.featCard}>
+              <TouchableOpacity activeOpacity={0.85} style={s.featCard} onPress={() => nav.navigate("Explore", { initialFilter: m.category_group ?? "all" })}>
                 <Image source={{ uri: img }} style={s.featImage} resizeMode="cover" />
                 <View style={s.featOverlay}>
                   {badge && <View style={[s.catBadge, { backgroundColor: badge.bg }]}><Text style={[s.catBadgeText, { color: badge.color }]}>{badge.label}</Text></View>}
@@ -99,11 +87,30 @@ export default function HomeScreen() {
                   <Text style={s.featTitle} numberOfLines={1}>{m.title}</Text>
                   {m.description && <Text style={s.featDesc} numberOfLines={1}>{m.description}</Text>}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
         />
       </View>
+
+      {categories.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Browse by category</Text>
+          <View style={s.chipRow}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                activeOpacity={0.7}
+                onPress={() => nav.navigate("Explore", { initialFilter: cat })}
+                style={[s.chip, { borderColor: colors.gold }]}
+              >
+                <View style={[s.chipDot, { backgroundColor: colors.gold }]} />
+                <Text style={s.chipLabel}>{CATEGORY_BADGES[cat]?.label ?? cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {game.current_streak_days > 0 && (
         <View style={s.streakCard}><Text style={s.streakIcon}>🔥</Text><Text style={s.streakText}>{game.current_streak_days} day streak — keep it going!</Text></View>

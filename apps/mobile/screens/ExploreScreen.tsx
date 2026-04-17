@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Image, RefreshControl, Alert, ScrollView } from "react-native";
+import { useRoute, useFocusEffect } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { CATEGORY_BADGES } from "../lib/levels";
@@ -97,10 +98,21 @@ function extractSearchTerms(title: string, categoryGroup: string | null): string
 }
 
 export default function ExploreScreen() {
+  const route = useRoute<any>();
   const [modules, setModules] = useState<Module[]>([]);
   const [progress, setProgress] = useState<Map<string, Progress>>(new Map());
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+
+  // Apply initialFilter from Home screen navigation param
+  useFocusEffect(
+    useCallback(() => {
+      const initial = route.params?.initialFilter;
+      if (initial && typeof initial === "string") {
+        setFilter(initial);
+      }
+    }, [route.params?.initialFilter])
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<Module | null>(null);
 
