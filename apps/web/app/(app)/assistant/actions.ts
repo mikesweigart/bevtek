@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { askMegan, isAIConfigured } from "@/lib/ai/claude";
 
 export type AssistantState = {
   error: string | null;
   query: string | null;
+  aiResponse: string | null;
   results: Array<{
     id: string;
     name: string;
@@ -17,9 +19,13 @@ export type AssistantState = {
   }>;
 };
 
-const initial: AssistantState = { error: null, query: null, results: [] };
+const initial: AssistantState = {
+  error: null,
+  query: null,
+  aiResponse: null,
+  results: [],
+};
 
-// Very lightweight keyword extractor. We'll replace with an LLM later.
 const STOPWORDS = new Set([
   "a", "an", "the", "is", "are", "we", "you", "they", "have", "has", "do",
   "does", "did", "any", "some", "of", "for", "in", "on", "with", "and", "or",
@@ -48,42 +54,40 @@ export async function askAction(
   if (!auth.user) return { ...initial, error: "Not authenticated." };
 
   const keywords = extractKeywords(q);
-  if (keywords.length === 0) {
-    return { error: null, query: q, results: [] };
-  }
 
-  // Try fuzzy search (pg_trgm) first; fall back to keyword ilike if the
-  // RPC doesn't exist (migration 15 not yet applied).
+  // Search inventory for matching products
   let results: AssistantState["results"] = [];
-  const fuzzy = await supabase.rpc("fuzzy_search_inventory", {
-    p_query: q,
-    p_limit: 20,
-  });
 
-  if (!fuzzy.error && fuzzy.data) {
-    results = (fuzzy.data as AssistantState["results"]) ?? [];
-  } else {
-    // Fallback: keyword-based ilike search.
-    const clauses = keywords
-      .flatMap((k) => [
-        `name.ilike.%${k}%`,
-        `brand.ilike.%${k}%`,
-        `category.ilike.%${k}%`,
-      ])
-      .join(",");
+  if (keywords.length > 0) {
+    const fuzzy = await supabase.rpc("fuzzy_search_inventory", {
+      p_query: q,
+      p_limit: 20,
+    });
 
-    const { data: items } = (await supabase
-      .from("inventory")
-      .select("id, name, brand, category, price, stock_qty, sku")
-      .or(clauses)
-      .eq("is_active", true)
-      .order("stock_qty", { ascending: false })
-      .limit(20)) as { data: AssistantState["results"] | null };
+    if (!fuzzy.error && fuzzy.data) {
+      results = (fuzzy.data as AssistantState["results"]) ?? [];
+    } else {
+      const clauses = keywords
+        .flatMap((k) => [
+          `name.ilike.%${k}%`,
+          `brand.ilike.%${k}%`,
+          `category.ilike.%${k}%`,
+        ])
+        .join(",");
 
-    results = items ?? [];
+      const { data: items } = (await supabase
+        .from("inventory")
+        .select("id, name, brand, category, price, stock_qty, sku")
+        .or(clauses)
+        .eq("is_active", true)
+        .order("stock_qty", { ascending: false })
+        .limit(20)) as { data: AssistantState["results"] | null };
+
+      results = items ?? [];
+    }
   }
 
-  // Log the query with matching ids.
+  // Get store name for Claude context
   const { data: profile } = await supabase
     .from("users")
     .select("store_id")
@@ -91,19 +95,49 @@ export async function askAction(
     .maybeSingle();
   const storeId = (profile as { store_id?: string } | null)?.store_id;
 
+  let storeName = "your store";
+  if (storeId) {
+    const { data: store } = await supabase
+      .from("stores")
+      .select("name")
+      .eq("id", storeId)
+      .maybeSingle();
+    storeName = (store as { name?: string } | null)?.name ?? storeName;
+  }
+
+  // If Claude is configured, get an AI-powered response
+  let aiResponse: string | null = null;
+  if (isAIConfigured()) {
+    try {
+      aiResponse = await askMegan({
+        query: q,
+        inventory: results.map((r) => ({
+          name: r.name,
+          brand: r.brand,
+          category: r.category,
+          price: r.price,
+          stock_qty: r.stock_qty,
+        })),
+        storeName,
+      });
+    } catch (e) {
+      console.error("Claude error:", (e as Error).message);
+      // Fall through to inventory-only response
+    }
+  }
+
+  // Log the query
   if (storeId) {
     await supabase.from("floor_queries").insert({
       store_id: storeId,
       user_id: auth.user.id,
       query_text: q,
-      response: results.length
-        ? `Found ${results.length} matching item${results.length === 1 ? "" : "s"}.`
-        : "No matches in current inventory.",
+      response: aiResponse ?? `Found ${results.length} matching items.`,
       item_ids: results.map((r) => r.id),
-      context: { keywords },
+      context: { keywords, ai: Boolean(aiResponse) },
     });
   }
 
   revalidatePath("/assistant");
-  return { error: null, query: q, results };
+  return { error: null, query: q, aiResponse, results };
 }

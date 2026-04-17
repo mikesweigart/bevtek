@@ -3,7 +3,7 @@
 import { useActionState, useRef, useEffect } from "react";
 import { askAction, type AssistantState } from "./actions";
 
-const initial: AssistantState = { error: null, query: null, results: [] };
+const initial: AssistantState = { error: null, query: null, aiResponse: null, results: [] };
 
 const SUGGESTIONS = [
   "bourbon under $50",
@@ -64,10 +64,27 @@ export function AssistantChat() {
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       {state.query && (
-        <div className="space-y-3">
-          <div className="text-sm text-[color:var(--color-muted)]">
-            Search: <span className="text-[color:var(--color-fg)]">{state.query}</span>
-          </div>
+        <div className="space-y-4">
+          {/* AI Response */}
+          {state.aiResponse && (
+            <div className="rounded-xl border-2 border-[color:var(--color-gold)] bg-gradient-to-br from-white to-[#FBF7F0] p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-2 w-2 rounded-full bg-[color:var(--color-gold)]" />
+                <span className="text-xs font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
+                  Megan
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {state.aiResponse}
+              </p>
+            </div>
+          )}
+
+          {!state.aiResponse && (
+            <div className="text-sm text-[color:var(--color-muted)]">
+              Search: <span className="text-[color:var(--color-fg)]">{state.query}</span>
+            </div>
+          )}
           {state.results.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[color:var(--color-border)] p-8 text-center">
               <p className="text-sm text-[color:var(--color-muted)]">
