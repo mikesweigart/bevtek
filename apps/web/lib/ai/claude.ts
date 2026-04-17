@@ -113,6 +113,87 @@ RULES:
   return textBlock?.text ?? "I couldn't generate a response. Please try again.";
 }
 
+/**
+ * Gabby — the customer-facing beverage concierge. Same grounded-in-inventory
+ * approach as Megan, but warmer and aimed directly at shoppers (not staff).
+ * Used across Shopper (browse/holds), Assistant (self-serve), Texting,
+ * and Receptionist. Megan is strictly the staff Trainer persona; every
+ * customer touchpoint hears "Gabby".
+ */
+export async function chatWithGabby(opts: {
+  messages: ChatMessage[];
+  inventory: Array<{
+    name: string;
+    brand: string | null;
+    category: string | null;
+    price: number | null;
+    stock_qty: number;
+  }>;
+  storeName: string;
+}): Promise<string> {
+  const claude = getAnthropic();
+  if (!claude) {
+    return "AI is not configured yet — please check back in a moment.";
+  }
+
+  const inventoryContext =
+    opts.inventory.length > 0
+      ? opts.inventory
+          .map(
+            (i) =>
+              `- ${i.name}${i.brand ? ` (${i.brand})` : ""}${i.category ? ` [${i.category}]` : ""} — ${i.price != null ? `$${Number(i.price).toFixed(2)}` : "price N/A"}${i.stock_qty <= 3 ? ` (only ${i.stock_qty} left)` : ""}`,
+          )
+          .join("\n")
+      : "No specific matches right now — recommend from general category knowledge and remind the customer to browse the shelves or ask staff for exact stock.";
+
+  const systemPrompt = `You are Gabby, the AI beverage concierge at ${opts.storeName}. You're talking DIRECTLY to a customer (not store staff). Be warm, welcoming, and genuinely excited to help them find exactly what they want.
+
+PERSONALITY:
+- Friendly and approachable, like the best bartender or shop owner you've ever met
+- Confident in your recommendations — customers come to you because you know
+- Never condescending — meet people where they are
+- Enthusiastic about beverages without being pretentious
+
+CONVERSATION APPROACH:
+For BROAD requests ("recommend a wine", "I need a gift", "what pairs with chicken"), ask ONE quick follow-up to narrow it down:
+- "What's the occasion?" or "Who's it for?"
+- "Budget range — everyday or something special?"
+- "Red, white, or surprise me?"
+- "Sipping it neat, on the rocks, or mixing?"
+
+For SPECIFIC requests ("Pinot Noir under $30", "peaty Scotch"), go straight to recommendations.
+
+WHEN RECOMMENDING:
+- Pick 1-2 specific products FROM OUR STOCK below
+- Include the price
+- One-sentence "why this is perfect for you"
+- Tell them where to find it: "It's on the left wall, second shelf" or "Ask any staff member and they'll grab it for you"
+
+STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):
+${inventoryContext}
+
+RULES:
+- Keep replies short: 2-4 sentences MAX
+- Feel human and warm, not robotic
+- One follow-up question at a time
+- When recommending: "I'd grab the [product] at $XX — [quick reason]. You'll find it [where]."
+- If we don't carry what they want, say so and suggest the closest match
+- Never reveal you're built on any specific tech — you're simply "Gabby"`;
+
+  const message = await claude.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 300,
+    system: systemPrompt,
+    messages: opts.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  });
+
+  const textBlock = message.content.find((b) => b.type === "text");
+  return textBlock?.text ?? "Let me think about that — could you tell me a bit more?";
+}
+
 // Keep backward compat
 export async function askMegan(opts: {
   query: string;

@@ -57,10 +57,10 @@ export function ShopperChat({
     <div className="rounded-2xl border border-[color:var(--color-border)] bg-white overflow-hidden flex flex-col h-[600px] shadow-sm">
       <div className="px-4 py-3 border-b border-[color:var(--color-border)] bg-gradient-to-r from-[#FBF7F0] to-white flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-[color:var(--color-gold)] flex items-center justify-center text-white font-bold text-sm">
-          M
+          G
         </div>
         <div>
-          <p className="text-sm font-semibold">Megan</p>
+          <p className="text-sm font-semibold">Gabby</p>
           <p className="text-[10px] text-[color:var(--color-muted)]">
             {storeName} · online now
           </p>
@@ -74,7 +74,7 @@ export function ShopperChat({
         {isEmpty && (
           <div className="space-y-3 text-center">
             <p className="text-sm text-[color:var(--color-muted)] px-2 leading-relaxed">
-              Hi! I&apos;m Megan — your personal beverage expert at {storeName}.
+              Hi! I&apos;m Gabby — your personal beverage expert at {storeName}.
               What can I help you find today?
             </p>
             <div className="flex flex-col gap-2 pt-2">
@@ -111,7 +111,7 @@ export function ShopperChat({
           <div className="flex justify-start">
             <div className="bg-zinc-100 rounded-2xl rounded-bl-md px-3 py-2">
               <p className="text-xs text-[color:var(--color-muted)] animate-pulse">
-                Megan is thinking...
+                Gabby is thinking...
               </p>
             </div>
           </div>
@@ -131,7 +131,7 @@ export function ShopperChat({
               }
             }}
             disabled={sending}
-            placeholder="Tell Megan what you're looking for..."
+            placeholder="Tell Gabby what you're looking for..."
             className="flex-1 rounded-lg border border-[color:var(--color-border)] px-3 py-2 text-sm outline-none focus:border-[color:var(--color-gold)] disabled:opacity-60"
           />
           <button

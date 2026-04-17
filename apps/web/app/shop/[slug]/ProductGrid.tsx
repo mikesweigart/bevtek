@@ -50,7 +50,7 @@ export function ProductGrid({
     return (
       <div className="rounded-xl border border-dashed border-[color:var(--color-border)] p-12 text-center">
         <p className="text-sm text-[color:var(--color-muted)]">
-          This store hasn&apos;t uploaded their inventory yet. Chat with Megan
+          This store hasn&apos;t uploaded their inventory yet. Chat with Gabby
           on the right — she can still help.
         </p>
       </div>

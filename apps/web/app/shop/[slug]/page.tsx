@@ -77,10 +77,10 @@ export default async function ShopperPage({
           </div>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-[color:var(--color-gold)] flex items-center justify-center text-white font-bold">
-              M
+              G
             </div>
             <div>
-              <p className="text-xs font-semibold">Megan</p>
+              <p className="text-xs font-semibold">Gabby</p>
               <p className="text-[10px] text-[color:var(--color-muted)]">
                 Your beverage expert
               </p>
@@ -97,7 +97,7 @@ export default async function ShopperPage({
               What&apos;s your evening looking like?
             </h2>
             <p className="text-sm text-[color:var(--color-muted)] mt-2">
-              Chat with Megan for a personal recommendation, or browse our
+              Chat with Gabby for a personal recommendation, or browse our
               shelves below.
             </p>
           </div>
@@ -105,7 +105,7 @@ export default async function ShopperPage({
           <ProductGrid products={products} storeSlug={store.slug} />
         </section>
 
-        {/* Right: Megan chat */}
+        {/* Right: Gabby chat */}
         <aside className="lg:sticky lg:top-8 lg:self-start">
           <ShopperChat storeId={store.id} storeName={store.name} />
         </aside>
