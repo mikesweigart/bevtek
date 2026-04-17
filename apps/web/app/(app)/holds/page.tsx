@@ -83,6 +83,15 @@ export default async function HoldsPage({
     // best-effort; never block the queue view
   }
 
+  // Lazy 24h-expiry sweep — staff land on /holds dozens of times per
+  // shift, so ready-at-front rows past hold_until auto-flip to
+  // 'expired' without any cron. RPC is idempotent + fast.
+  try {
+    await supabase.rpc("expire_stale_holds");
+  } catch {
+    // ignore — function may not be migrated yet on older envs
+  }
+
   let query = supabase
     .from("hold_requests")
     .select(

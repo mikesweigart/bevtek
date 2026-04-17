@@ -59,14 +59,16 @@ export default function ProductDetailModal({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Refresh save/cart state each time we open.
+  // Refresh save/cart state each time we open + prefill hold contact
+  // prefs from the shopper's previous hold so repeat requests are
+  // literally two taps (confirm → "use these details").
   useEffect(() => {
     if (!product || !visible) return;
     setFound(false);
     setHoldStep("idle");
     (async () => {
       try {
-        const [saveRes, cartRes] = await Promise.all([
+        const [saveRes, cartRes, prefRes] = await Promise.all([
           supabase
             .from("saved_products")
             .select("id")
@@ -77,9 +79,23 @@ export default function ProductDetailModal({
             .select("id")
             .eq("item_id", product.id)
             .maybeSingle(),
+          supabase.rpc("my_hold_preferences"),
         ]);
         setSaved(!!saveRes.data);
         setInCart(!!cartRes.data);
+        const prefs = (prefRes.data ?? null) as {
+          notify_channel?: "sms" | "email" | "both" | null;
+          phone?: string | null;
+          email?: string | null;
+        } | null;
+        if (prefs) {
+          // "both" collapses to "sms" for the two-pill UI — shopper can
+          // toggle to email if they want. Respect explicit single values.
+          if (prefs.notify_channel === "email") setChannel("email");
+          else if (prefs.notify_channel === "sms") setChannel("sms");
+          if (prefs.phone) setPhone(prefs.phone);
+          if (prefs.email) setEmail(prefs.email);
+        }
       } catch {
         setSaved(false);
         setInCart(false);
