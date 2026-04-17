@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Speech from "expo-speech";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
+import GuidedFlow from "../components/GuidedFlow";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -44,6 +45,7 @@ export default function AskGabbyScreen() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+  const [mode, setMode] = useState<"chat" | "guided">("chat");
   // Stable per-mount session id so the owner's Conversations dashboard
   // groups this whole chat thread under one session, not one row per turn.
   const sessionIdRef = useRef<string>(
@@ -186,6 +188,14 @@ export default function AskGabbyScreen() {
         </View>
       </View>
 
+      {mode === "guided" ? (
+        <GuidedFlow
+          storeId={storeId}
+          storeName={storeName}
+          onExit={() => setMode("chat")}
+        />
+      ) : (
+      <>
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -204,7 +214,22 @@ export default function AskGabbyScreen() {
               gift ideas, what&apos;s new on the shelf, or a cocktail to try tonight.
               I&apos;ll always pick from what&apos;s in stock.
             </Text>
-            <Text style={styles.emptyLabel}>Try one of these</Text>
+            <TouchableOpacity
+              style={styles.guidedCta}
+              onPress={() => setMode("guided")}
+              disabled={!storeId}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.guidedCtaIcon}>🧭</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.guidedCtaTitle}>Help me find something</Text>
+                <Text style={styles.guidedCtaSub}>
+                  Tap-through questions — no typing needed.
+                </Text>
+              </View>
+              <Text style={styles.guidedCtaArrow}>›</Text>
+            </TouchableOpacity>
+            <Text style={styles.emptyLabel}>Or ask me anything</Text>
             {PROMPTS.map((p) => (
               <TouchableOpacity
                 key={p.text}
@@ -282,6 +307,8 @@ export default function AskGabbyScreen() {
           <Text style={styles.sendText}>Send</Text>
         </TouchableOpacity>
       </View>
+      </>
+      )}
     </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -348,6 +375,22 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 4,
   },
+  guidedCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 2,
+    borderColor: colors.gold,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: "#FBF7F0",
+    marginBottom: 14,
+  },
+  guidedCtaIcon: { fontSize: 26 },
+  guidedCtaTitle: { fontSize: 15, fontWeight: "700", color: colors.fg },
+  guidedCtaSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  guidedCtaArrow: { fontSize: 24, color: colors.gold, fontWeight: "300" },
   prompt: {
     flexDirection: "row",
     alignItems: "center",
