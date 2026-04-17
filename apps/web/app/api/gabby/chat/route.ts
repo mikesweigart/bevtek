@@ -82,13 +82,25 @@ export async function POST(req: Request) {
     )
     .slice(0, 6);
 
-  let products: Array<{
+  type Product = {
     name: string;
     brand: string | null;
     category: string | null;
     price: number | null;
     stock_qty: number;
-  }> = [];
+  };
+  let products: Product[] = [];
+
+  // Base query: every in-stock item for this store. We DON'T filter on
+  // is_active here — many imports leave that NULL, which would silently
+  // hide the entire catalog from Gabby. Better to show too much than
+  // nothing.
+  const baseQuery = () =>
+    supabase
+      .from("inventory")
+      .select("name, brand, category, price, stock_qty")
+      .eq("store_id", storeId)
+      .gt("stock_qty", 0);
 
   if (searchTerms.length > 0) {
     const clauses = searchTerms
@@ -99,16 +111,21 @@ export async function POST(req: Request) {
       ])
       .join(",");
 
-    const { data } = await supabase
-      .from("inventory")
-      .select("name, brand, category, price, stock_qty")
-      .eq("store_id", storeId)
-      .eq("is_active", true)
-      .gt("stock_qty", 0)
+    const { data } = await baseQuery()
       .or(clauses)
       .order("stock_qty", { ascending: false })
       .limit(12);
-    products = (data ?? []) as typeof products;
+    products = (data ?? []) as Product[];
+  }
+
+  // Fallback: if keyword search matched nothing (or no keywords at all),
+  // give Gabby a baseline of the store's top-stocked items so she can
+  // still recommend real products with real prices.
+  if (products.length === 0) {
+    const { data } = await baseQuery()
+      .order("stock_qty", { ascending: false })
+      .limit(20);
+    products = (data ?? []) as Product[];
   }
 
   if (!isAIConfigured()) {
@@ -134,6 +151,7 @@ export async function POST(req: Request) {
     return json({
       error: null,
       messages: [...messages, { role: "assistant", content: aiResponse }],
+      inventoryCount: products.length,
     });
   } catch (e) {
     return json(
