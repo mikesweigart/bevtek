@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import { CheckoutButton } from "./CheckoutButton";
+import { isStripeConfigured } from "@/lib/stripe/client";
 
 const PLANS = [
   {
@@ -91,6 +93,7 @@ export default async function BillingPage() {
   } | null;
   const currentPlan = s?.plan ?? "trial";
   const hasStripe = Boolean(s?.stripe_customer_id);
+  const stripeReady = isStripeConfigured();
 
   return (
     <div className="space-y-10">
@@ -158,20 +161,20 @@ export default async function BillingPage() {
                 </p>
               </div>
               {isOwner && !isCurrent && (
-                <button
-                  disabled
-                  className={`block w-full rounded-md py-2.5 text-sm font-semibold text-center transition-colors ${
-                    plan.highlight
-                      ? "bg-[color:var(--color-gold)] text-white opacity-60"
-                      : "border border-[color:var(--color-border)] opacity-60"
-                  }`}
-                >
-                  {currentPlan === "trial"
-                    ? "Subscribe"
-                    : plan.price > (PLANS.find((p) => p.key === currentPlan)?.price ?? 0)
-                      ? "Upgrade"
-                      : "Switch"}
-                </button>
+                <CheckoutButton
+                  plan={plan.key}
+                  label={
+                    plan.key === "enterprise"
+                      ? "Talk to sales"
+                      : currentPlan === "trial"
+                        ? "Start 14-day trial"
+                        : plan.price > (PLANS.find((p) => p.key === currentPlan)?.price ?? 0)
+                          ? "Upgrade"
+                          : "Switch"
+                  }
+                  highlight={plan.highlight}
+                  disabled={!stripeReady || plan.key === "enterprise"}
+                />
               )}
               <ul className="space-y-1.5 text-sm">
                 {plan.features.map((f) => (
