@@ -23,8 +23,10 @@ type Hold = {
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending: { label: "Waiting for staff", color: "#b45309" },
+  in_progress: { label: "Staff is grabbing it", color: "#2563eb" },
   confirmed: { label: "Ready for pickup", color: "#15803d" },
   picked_up: { label: "Picked up", color: colors.muted },
+  cannot_fulfill: { label: "Couldn't fulfill — sorry", color: "#991b1b" },
   cancelled: { label: "Cancelled", color: "#991b1b" },
   expired: { label: "Expired", color: colors.muted },
 };
