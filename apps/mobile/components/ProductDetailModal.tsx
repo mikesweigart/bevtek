@@ -3,10 +3,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -35,6 +38,8 @@ type Props = {
   onBackToResults: () => void;
 };
 
+type Channel = "sms" | "email";
+
 export default function ProductDetailModal({
   product,
   visible,
@@ -43,23 +48,40 @@ export default function ProductDetailModal({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<boolean>(false);
-  const [holding, setHolding] = useState(false);
+  const [addingCart, setAddingCart] = useState(false);
+  const [inCart, setInCart] = useState<boolean>(false);
   const [found, setFound] = useState(false);
+  const [holdStep, setHoldStep] = useState<"idle" | "confirm" | "contact" | "sending" | "done">(
+    "idle",
+  );
+  const [channel, setChannel] = useState<Channel>("sms");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
-  // Check whether this product is already saved when we open.
+  // Refresh save/cart state each time we open.
   useEffect(() => {
     if (!product || !visible) return;
     setFound(false);
+    setHoldStep("idle");
     (async () => {
       try {
-        const { data } = await supabase
-          .from("saved_products")
-          .select("id")
-          .eq("item_id", product.id)
-          .maybeSingle();
-        setSaved(!!data);
+        const [saveRes, cartRes] = await Promise.all([
+          supabase
+            .from("saved_products")
+            .select("id")
+            .eq("item_id", product.id)
+            .maybeSingle(),
+          supabase
+            .from("cart_items")
+            .select("id")
+            .eq("item_id", product.id)
+            .maybeSingle(),
+        ]);
+        setSaved(!!saveRes.data);
+        setInCart(!!cartRes.data);
       } catch {
         setSaved(false);
+        setInCart(false);
       }
     })();
   }, [product, visible]);
@@ -74,54 +96,83 @@ export default function ProductDetailModal({
         p_item_id: product.id,
       });
       if (error) throw error;
-      const nowSaved = (data as { saved?: boolean } | null)?.saved ?? false;
-      setSaved(nowSaved);
+      setSaved((data as { saved?: boolean } | null)?.saved ?? false);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Couldn't save";
       Alert.alert(
         "Sign in to save",
-        "Saving products requires an account. " + msg,
+        "Saving products requires an account. " +
+          (e instanceof Error ? e.message : ""),
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleHold() {
+  async function handleAddToCart() {
     if (!product) return;
-    setHolding(true);
+    setAddingCart(true);
     try {
-      const { data, error } = await supabase.rpc("request_hold_authed", {
-        p_item_id: product.id,
-        p_quantity: 1,
-        p_notes: "Saved from Gabby guided flow",
-      });
-      if (error) throw error;
-      Alert.alert(
-        "Hold requested ✓",
-        `Our team has been notified to pull "${product.name}" for you. You'll see it on your Holds tab.`,
-        [{ text: "OK", onPress: onClose }],
-      );
+      if (inCart) {
+        const { error } = await supabase.rpc("remove_from_cart", {
+          p_item_id: product.id,
+        });
+        if (error) throw error;
+        setInCart(false);
+      } else {
+        const { error } = await supabase.rpc("add_to_cart", {
+          p_item_id: product.id,
+          p_quantity: 1,
+        });
+        if (error) throw error;
+        setInCart(true);
+      }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Couldn't place hold";
       Alert.alert(
-        "Sign in to hold",
-        "Holding a product requires an account so the team knows who to reach. " +
-          msg,
+        "Couldn't update cart",
+        e instanceof Error ? e.message : "Try again in a moment.",
       );
     } finally {
-      setHolding(false);
+      setAddingCart(false);
+    }
+  }
+
+  async function submitHold() {
+    if (!product) return;
+    if (channel === "sms" && !phone.trim()) {
+      Alert.alert("Phone required", "Enter a phone number so we can text you.");
+      return;
+    }
+    if (channel === "email" && !email.trim()) {
+      Alert.alert("Email required", "Enter an email so we can reach you.");
+      return;
+    }
+    setHoldStep("sending");
+    try {
+      const { error } = await supabase.rpc("request_hold_v2", {
+        p_item_id: product.id,
+        p_notify_channel: channel,
+        p_phone: channel === "sms" ? phone.trim() : null,
+        p_email: channel === "email" ? email.trim() : null,
+        p_quantity: 1,
+        p_notes: "From Gabby guided flow",
+      });
+      if (error) throw error;
+      setHoldStep("done");
+    } catch (e) {
+      setHoldStep("contact");
+      Alert.alert(
+        "Couldn't place hold",
+        e instanceof Error ? e.message : "Try again in a moment.",
+      );
     }
   }
 
   function handleFound() {
     setFound(true);
-    // Client-side acknowledgment — no DB write needed for now. In v2 we'll
-    // log this to analytics to power "most-found-via-guided-flow" reports.
     setTimeout(() => {
       Alert.alert(
         "Nice find! 🎉",
-        "Happy to help you discover this one.",
+        "We've marked this as found in store.",
         [{ text: "Back to results", onPress: onBackToResults }],
       );
     }, 150);
@@ -143,7 +194,10 @@ export default function ProductDetailModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={styles.topBar}>
           <TouchableOpacity onPress={onClose} hitSlop={10}>
             <Text style={styles.closeText}>✕ Close</Text>
@@ -180,11 +234,9 @@ export default function ProductDetailModal({
             )}
           </View>
 
-          {/* Name + brand */}
           <Text style={styles.name}>{product.name}</Text>
           {product.brand && <Text style={styles.brand}>{product.brand}</Text>}
 
-          {/* Price + stock strip */}
           <View style={styles.priceRow}>
             {priceText && <Text style={styles.price}>{priceText}</Text>}
             <Text
@@ -197,7 +249,6 @@ export default function ProductDetailModal({
             </Text>
           </View>
 
-          {/* Description */}
           {(product.description_short ||
             product.flavor_notes ||
             product.tasting_notes) && (
@@ -213,30 +264,47 @@ export default function ProductDetailModal({
 
           {/* Action buttons */}
           <View style={styles.actions}>
+            {/* Primary: Hold */}
             <TouchableOpacity
-              style={[styles.primaryAction, holding && { opacity: 0.6 }]}
-              onPress={handleHold}
-              disabled={holding || product.stock_qty === 0}
+              style={[styles.primaryAction, product.stock_qty === 0 && { opacity: 0.5 }]}
+              onPress={() => setHoldStep("confirm")}
+              disabled={product.stock_qty === 0}
               activeOpacity={0.85}
             >
-              {holding ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Text style={styles.actionIcon}>🛎️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.primaryActionTitle}>
-                      Hold this for me
-                    </Text>
-                    <Text style={styles.primaryActionSub}>
-                      Staff will pull it from the shelf and text when it&apos;s ready
-                    </Text>
-                  </View>
-                  <Text style={styles.actionArrow}>›</Text>
-                </>
-              )}
+              <Text style={styles.actionIcon}>🛎️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.primaryActionTitle}>
+                  Request In-Store Hold
+                </Text>
+                <Text style={styles.primaryActionSub}>
+                  We&apos;ll hold it at the front for 24 hours
+                </Text>
+              </View>
+              <Text style={styles.actionArrow}>›</Text>
             </TouchableOpacity>
 
+            {/* Add to Cart */}
+            <TouchableOpacity
+              style={[styles.secondaryAction, inCart && styles.cartedAction]}
+              onPress={handleAddToCart}
+              disabled={addingCart}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.actionIcon}>🛒</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.secondaryActionTitle}>
+                  {inCart ? "In your Cart ✓" : "Add to Virtual Cart"}
+                </Text>
+                <Text style={styles.secondaryActionSub}>
+                  {inCart
+                    ? "Tap to remove from Cart"
+                    : "For items you're considering"}
+                </Text>
+              </View>
+              {addingCart && <ActivityIndicator size="small" color={colors.gold} />}
+            </TouchableOpacity>
+
+            {/* Found in store */}
             <TouchableOpacity
               style={[styles.secondaryAction, found && styles.foundAction]}
               onPress={handleFound}
@@ -245,14 +313,15 @@ export default function ProductDetailModal({
               <Text style={styles.actionIcon}>{found ? "✅" : "🎯"}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.secondaryActionTitle}>
-                  {found ? "Marked as found" : "I found it in store"}
+                  {found ? "Marked as found" : "I found it in the store"}
                 </Text>
                 <Text style={styles.secondaryActionSub}>
-                  Let us know you grabbed it — we&apos;ll learn what you love
+                  Great — we&apos;ll remember this one
                 </Text>
               </View>
             </TouchableOpacity>
 
+            {/* Back to results */}
             <TouchableOpacity
               style={styles.tertiaryAction}
               onPress={onBackToResults}
@@ -268,9 +337,157 @@ export default function ProductDetailModal({
                 </Text>
               </View>
             </TouchableOpacity>
+
+            {/* Not interested */}
+            <TouchableOpacity
+              style={styles.dismissAction}
+              onPress={onClose}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.dismissText}>Not interested</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
+
+        {/* Hold flow dialogs — inline overlays so keyboard handling is tidy */}
+        {holdStep === "confirm" && (
+          <View style={styles.overlay}>
+            <View style={styles.sheet}>
+              <Text style={styles.sheetTitle}>
+                Hold this item in the store?
+              </Text>
+              <Text style={styles.sheetBody}>
+                We&apos;ll hold it at the front for 24 hours and let you know
+                when it&apos;s ready for pickup.
+              </Text>
+              <TouchableOpacity
+                style={styles.sheetPrimary}
+                onPress={() => setHoldStep("contact")}
+              >
+                <Text style={styles.sheetPrimaryText}>Yes, hold it</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetCancel}
+                onPress={() => setHoldStep("idle")}
+              >
+                <Text style={styles.sheetCancelText}>No, go back</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {holdStep === "contact" && (
+          <View style={styles.overlay}>
+            <View style={styles.sheet}>
+              <Text style={styles.sheetTitle}>How should we reach you?</Text>
+              <Text style={styles.sheetBody}>
+                So we can tell you the moment it&apos;s ready.
+              </Text>
+              <View style={styles.channelRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.channelPill,
+                    channel === "sms" && styles.channelPillActive,
+                  ]}
+                  onPress={() => setChannel("sms")}
+                >
+                  <Text
+                    style={[
+                      styles.channelLabel,
+                      channel === "sms" && styles.channelLabelActive,
+                    ]}
+                  >
+                    📱 Text me
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.channelPill,
+                    channel === "email" && styles.channelPillActive,
+                  ]}
+                  onPress={() => setChannel("email")}
+                >
+                  <Text
+                    style={[
+                      styles.channelLabel,
+                      channel === "email" && styles.channelLabelActive,
+                    ]}
+                  >
+                    ✉️ Email me
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {channel === "sms" ? (
+                <TextInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="(555) 555-5555"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  style={styles.input}
+                  autoFocus
+                />
+              ) : (
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@email.com"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  autoFocus
+                />
+              )}
+              <TouchableOpacity
+                style={styles.sheetPrimary}
+                onPress={submitHold}
+              >
+                <Text style={styles.sheetPrimaryText}>Confirm Hold Request</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetCancel}
+                onPress={() => setHoldStep("idle")}
+              >
+                <Text style={styles.sheetCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {holdStep === "sending" && (
+          <View style={styles.overlay}>
+            <View style={styles.sheet}>
+              <ActivityIndicator color={colors.gold} />
+              <Text style={[styles.sheetBody, { marginTop: 14 }]}>
+                Sending your request...
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {holdStep === "done" && (
+          <View style={styles.overlay}>
+            <View style={styles.sheet}>
+              <Text style={styles.sheetIcon}>🎉</Text>
+              <Text style={styles.sheetTitle}>Hold requested ✓</Text>
+              <Text style={styles.sheetBody}>
+                Our team is on it. We&apos;ll let you know the moment &ldquo;
+                {product.name}&rdquo; is up front.
+              </Text>
+              <TouchableOpacity style={styles.sheetPrimary} onPress={onClose}>
+                <Text style={styles.sheetPrimaryText}>See my holds</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetCancel}
+                onPress={onBackToResults}
+              >
+                <Text style={styles.sheetCancelText}>Keep shopping</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -375,6 +592,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  cartedAction: { borderColor: colors.gold, backgroundColor: "#FBF7F0" },
   foundAction: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
   secondaryActionTitle: { fontSize: 15, fontWeight: "700", color: colors.fg },
   secondaryActionSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
@@ -388,6 +606,79 @@ const styles = StyleSheet.create({
   },
   tertiaryActionTitle: { fontSize: 14, fontWeight: "600", color: colors.fg },
   tertiaryActionSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  dismissAction: {
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  dismissText: { color: colors.muted, fontSize: 13, fontWeight: "500" },
   actionIcon: { fontSize: 22 },
   actionArrow: { color: "#fff", fontSize: 22, fontWeight: "300" },
+
+  // Hold confirmation overlay
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 22,
+    width: "100%",
+    maxWidth: 420,
+    gap: 6,
+  },
+  sheetIcon: { fontSize: 40, textAlign: "center", marginBottom: 2 },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.fg,
+    letterSpacing: -0.3,
+  },
+  sheetBody: { fontSize: 14, color: colors.muted, lineHeight: 20 },
+  sheetPrimary: {
+    marginTop: 12,
+    backgroundColor: colors.gold,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  sheetPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  sheetCancel: { paddingVertical: 10, alignItems: "center" },
+  sheetCancelText: { color: colors.muted, fontSize: 14, fontWeight: "500" },
+
+  channelRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  channelPill: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  channelPillActive: {
+    borderColor: colors.gold,
+    backgroundColor: "#FBF7F0",
+  },
+  channelLabel: { fontSize: 14, color: colors.muted, fontWeight: "600" },
+  channelLabelActive: { color: colors.gold },
+  input: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.fg,
+    backgroundColor: "#fff",
+  },
 });
