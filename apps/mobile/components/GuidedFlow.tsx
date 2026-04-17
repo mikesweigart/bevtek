@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { colors } from "../lib/theme";
 import tree from "../lib/gabby/tree.json";
+import ProductDetailModal, { type Product as DetailProduct } from "./ProductDetailModal";
 
 const WEB_BASE =
   process.env.EXPO_PUBLIC_WEB_BASE_URL ?? "https://bevtek-web.vercel.app";
@@ -56,6 +57,7 @@ type Product = {
   subcategory: string | null;
   price: number | null;
   stock_qty: number;
+  image_url?: string | null;
   description_short: string | null;
   flavor_notes: string | null;
   tasting_notes: string | null;
@@ -97,6 +99,7 @@ export default function GuidedFlow({ storeId, storeName, onExit }: Props) {
   const [relaxed, setRelaxed] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   // Keep a filter-history stack so Back undoes the narrowing cleanly.
   const filterHistory = useRef<Filters[]>([{}]);
 
@@ -249,7 +252,12 @@ export default function GuidedFlow({ storeId, storeName, onExit }: Props) {
             </View>
           )}
           {!loading && results && results.map((p) => (
-            <View key={p.id} style={styles.card}>
+            <TouchableOpacity
+              key={p.id}
+              style={styles.card}
+              onPress={() => setActiveProduct(p)}
+              activeOpacity={0.8}
+            >
               <View style={{ flex: 1 }}>
                 <View style={styles.cardTopRow}>
                   <Text style={styles.cardName} numberOfLines={2}>{p.name}</Text>
@@ -271,9 +279,17 @@ export default function GuidedFlow({ storeId, storeName, onExit }: Props) {
                     {p.stock_qty > 5 ? "In stock" : `Only ${p.stock_qty} left`}
                   </Text>
                 </View>
+                <Text style={styles.cardTapHint}>Tap for details, hold, or save →</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
+
+          <ProductDetailModal
+            product={activeProduct as DetailProduct | null}
+            visible={!!activeProduct}
+            onClose={() => setActiveProduct(null)}
+            onBackToResults={() => setActiveProduct(null)}
+          />
           {!loading && results && results.length > 0 && (
             <TouchableOpacity style={styles.secondaryBtn} onPress={restart}>
               <Text style={styles.secondaryBtnText}>Start a new search</Text>
@@ -369,6 +385,7 @@ const styles = StyleSheet.create({
   },
   cardPrice: { fontSize: 15, fontWeight: "700", color: colors.gold },
   cardStock: { fontSize: 11, color: colors.muted },
+  cardTapHint: { fontSize: 11, color: colors.gold, fontWeight: "700", marginTop: 8 },
   pickBadge: {
     backgroundColor: "#FBF7F0",
     borderRadius: 999,

@@ -81,10 +81,11 @@ type Row = {
   style: string[] | null;
   flavor_profile: string[] | null;
   intended_use: string[] | null;
+  image_url: string | null;
 };
 
 const SELECT =
-  "id, name, brand, category, subcategory, price, stock_qty, description_short, flavor_notes, tasting_notes, is_staff_pick, is_local, style, flavor_profile, intended_use";
+  "id, name, brand, category, subcategory, price, stock_qty, description_short, flavor_notes, tasting_notes, is_staff_pick, is_local, style, flavor_profile, intended_use, image_url";
 
 async function query(
   supabase: Awaited<ReturnType<typeof createClient>>,

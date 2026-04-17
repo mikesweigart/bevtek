@@ -26,6 +26,7 @@ import HoldsQueueScreen from "./screens/HoldsQueueScreen";
 // Customer
 import ShopScreen from "./screens/ShopScreen";
 import MyHoldsScreen from "./screens/MyHoldsScreen";
+import SavedScreen from "./screens/SavedScreen";
 
 const Tab = createBottomTabNavigator();
 const AuthStack = createNativeStackNavigator();
@@ -143,6 +144,11 @@ function EmployeeTabs() {
         options={{ title: "Customer Holds" }}
       />
       <Tab.Screen
+        name="Saved"
+        component={SavedScreen}
+        options={{ headerShown: false }}
+      />
+      <Tab.Screen
         name="Profile"
         component={ProfileStackNav}
         options={{ headerShown: false }}
@@ -162,6 +168,11 @@ function CustomerTabs() {
         name="AskGabby"
         component={AskGabbyScreen}
         options={{ tabBarLabel: "Gabby", title: "Gabby", headerShown: false }}
+      />
+      <Tab.Screen
+        name="Saved"
+        component={SavedScreen}
+        options={{ headerShown: false }}
       />
       <Tab.Screen name="My Holds" component={MyHoldsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
