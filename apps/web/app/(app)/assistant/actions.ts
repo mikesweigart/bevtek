@@ -12,9 +12,12 @@ export type ChatState = {
     id: string;
     name: string;
     brand: string | null;
+    varietal: string | null;
     category: string | null;
     price: number | null;
     stock_qty: number;
+    tasting_notes: string | null;
+    summary_for_customer: string | null;
   }>;
 };
 
@@ -65,15 +68,41 @@ export async function sendMessageAction(
     });
 
     if (!fuzzy.error && fuzzy.data) {
-      products = (fuzzy.data as ChatState["products"]) ?? [];
+      // fuzzy_search_inventory is a legacy RPC that predates the
+      // varietal/tasting-notes columns. Hydrate from inventory so Megan
+      // sees the same enriched fields Gabby does.
+      const baseRows = (fuzzy.data as Array<{ id: string }>) ?? [];
+      const ids = baseRows.map((r) => r.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: enriched } = await supabase
+          .from("inventory")
+          .select(
+            "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+          )
+          .in("id", ids);
+        // Preserve the fuzzy-ranking order that the RPC returned.
+        const byId = new Map(
+          ((enriched as ChatState["products"] | null) ?? []).map((p) => [p.id, p]),
+        );
+        products = ids
+          .map((id) => byId.get(id))
+          .filter((p): p is ChatState["products"][number] => !!p);
+      }
     } else {
       const clauses = keywords
         .slice(0, 5)
-        .flatMap((k) => [`name.ilike.%${k}%`, `brand.ilike.%${k}%`, `category.ilike.%${k}%`])
+        .flatMap((k) => [
+          `name.ilike.%${k}%`,
+          `brand.ilike.%${k}%`,
+          `varietal.ilike.%${k}%`,
+          `category.ilike.%${k}%`,
+        ])
         .join(",");
       const { data } = await supabase
         .from("inventory")
-        .select("id, name, brand, category, price, stock_qty")
+        .select(
+          "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+        )
         .or(clauses)
         .eq("is_active", true)
         .order("stock_qty", { ascending: false })
@@ -108,8 +137,14 @@ export async function sendMessageAction(
       aiResponse = await chatWithMegan({
         messages,
         inventory: products.map((p) => ({
-          name: p.name, brand: p.brand, category: p.category,
-          price: p.price, stock_qty: p.stock_qty,
+          name: p.name,
+          brand: p.brand,
+          varietal: p.varietal,
+          category: p.category,
+          price: p.price,
+          stock_qty: p.stock_qty,
+          tasting_notes: p.tasting_notes,
+          summary_for_customer: p.summary_for_customer,
         })),
         storeName,
       });

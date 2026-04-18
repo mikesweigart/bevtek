@@ -10,12 +10,15 @@ type Item = {
   sku: string | null;
   name: string;
   brand: string | null;
+  varietal: string | null;
   category: string | null;
   size_ml: number | null;
   price: number | null;
   cost: number | null;
   stock_qty: number;
   image_url: string | null;
+  image_source: string | null;
+  source_confidence: string | null;
   is_active: boolean;
 };
 
@@ -35,7 +38,7 @@ export default async function InventoryPage({
   let query = supabase
     .from("inventory")
     .select(
-      "id, sku, name, brand, category, size_ml, price, cost, stock_qty, image_url, is_active",
+      "id, sku, name, brand, varietal, category, size_ml, price, cost, stock_qty, image_url, image_source, source_confidence, is_active",
       {
         count: "exact",
       },
@@ -227,10 +230,20 @@ export default async function InventoryPage({
                               href={`/inventory/${i.id}`}
                               className="block hover:text-[color:var(--color-gold)]"
                             >
-                              <div className="font-medium">{i.name}</div>
-                              {i.brand && (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{i.name}</span>
+                                {i.source_confidence && (
+                                  <RowConfidencePill
+                                    value={i.source_confidence}
+                                    source={i.image_source}
+                                  />
+                                )}
+                              </div>
+                              {(i.brand || i.varietal) && (
                                 <div className="text-[10px] tracking-widest uppercase text-[color:var(--color-muted)]">
-                                  {i.brand}
+                                  {[i.brand, i.varietal]
+                                    .filter(Boolean)
+                                    .join(" · ")}
                                 </div>
                               )}
                             </Link>
@@ -291,5 +304,38 @@ export default async function InventoryPage({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Tiny inline badge on each inventory row so the owner can eyeball
+ * which products came back from which tier of the pipeline. Green =
+ * verified/high (external provider match), amber = medium/low (name
+ * search / AI-generated), red = placeholder fallback, gray = none.
+ * Hover title spells out the exact image source.
+ */
+function RowConfidencePill({
+  value,
+  source,
+}: {
+  value: string;
+  source: string | null;
+}) {
+  const colorMap: Record<string, string> = {
+    verified: "bg-emerald-500",
+    high: "bg-emerald-400",
+    medium: "bg-amber-400",
+    low: "bg-amber-500",
+    partial: "bg-zinc-400",
+    none: "bg-red-400",
+  };
+  const color = colorMap[value] ?? "bg-zinc-300";
+  const title = `Confidence: ${value}${source ? ` · image from ${source}` : ""}`;
+  return (
+    <span
+      className={`inline-block h-2 w-2 rounded-full ${color}`}
+      title={title}
+      aria-label={title}
+    />
   );
 }

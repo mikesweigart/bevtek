@@ -22,19 +22,61 @@ export type ChatMessage = {
 };
 
 /**
+ * Shape passed into chatWithMegan/chatWithGabby. Every field beyond
+ * `name` is optional and nullable because our enrichment pipeline fills
+ * these in progressively — Gabby must still do her best with whatever
+ * the row has. When varietal + tasting_notes are present she can give
+ * a specific, grounded recommendation; when they're missing she falls
+ * back to style-level advice.
+ */
+export type InventoryForAI = {
+  name: string;
+  brand: string | null;
+  varietal?: string | null;
+  category: string | null;
+  price: number | null;
+  stock_qty: number;
+  tasting_notes?: string | null;
+  summary_for_customer?: string | null;
+};
+
+/**
+ * Build the human-readable inventory block the system prompt injects.
+ * Format is compact but rich: one line per product, with flavor notes
+ * indented when present. The model treats the block as hard-ground:
+ * "ONLY recommend from this list."
+ */
+function formatInventoryBlock(inventory: InventoryForAI[]): string {
+  if (inventory.length === 0) {
+    return "No matching products found in store inventory.";
+  }
+  return inventory
+    .map((i) => {
+      const parts = [i.name];
+      if (i.brand) parts.push(`(${i.brand})`);
+      if (i.varietal) parts.push(`— ${i.varietal}`);
+      if (i.category) parts.push(`[${i.category}]`);
+      const price = i.price != null ? `$${Number(i.price).toFixed(2)}` : "price N/A";
+      const stock =
+        i.stock_qty <= 3 ? `only ${i.stock_qty} left` : `${i.stock_qty} in stock`;
+      let line = `- ${parts.join(" ")} — ${price} — ${stock}`;
+      // Flavor / pairing notes — the single biggest lever for Gabby
+      // giving specific recommendations instead of generic ones.
+      const notes = i.summary_for_customer ?? i.tasting_notes;
+      if (notes) line += `\n    · ${notes}`;
+      return line;
+    })
+    .join("\n");
+}
+
+/**
  * Multi-turn conversational Megan. Asks follow-up questions like a real
  * sommelier / bourbon expert before recommending. Grounds answers in
  * the store's actual inventory.
  */
 export async function chatWithMegan(opts: {
   messages: ChatMessage[];
-  inventory: Array<{
-    name: string;
-    brand: string | null;
-    category: string | null;
-    price: number | null;
-    stock_qty: number;
-  }>;
+  inventory: InventoryForAI[];
   storeName: string;
 }): Promise<string> {
   const claude = getAnthropic();
@@ -42,15 +84,7 @@ export async function chatWithMegan(opts: {
     return "AI is not configured. Add ANTHROPIC_API_KEY to enable Megan.";
   }
 
-  const inventoryContext =
-    opts.inventory.length > 0
-      ? opts.inventory
-          .map(
-            (i) =>
-              `- ${i.name}${i.brand ? ` (${i.brand})` : ""}${i.category ? ` [${i.category}]` : ""} — ${i.price != null ? `$${Number(i.price).toFixed(2)}` : "price N/A"} — ${i.stock_qty} in stock`,
-          )
-          .join("\n")
-      : "No matching products found in store inventory.";
+  const inventoryContext = formatInventoryBlock(opts.inventory);
 
   const systemPrompt = `You are Megan, the AI beverage expert at ${opts.storeName}. You help store staff answer customer questions — and you're REALLY good at it.
 
@@ -76,7 +110,7 @@ When a question is SPECIFIC ENOUGH ("peaty Scotch under $60", "Pinot Noir for sa
 AFTER getting enough context (usually after 1-2 follow-ups), give a SPECIFIC recommendation:
 - Name 1-2 products FROM THE STORE INVENTORY below
 - Include the price
-- Explain WHY it fits in one sentence
+- Explain WHY it fits in one sentence — if the product has tasting notes or a customer summary (the indented "·" line under it), USE those exact flavor descriptors and pairing cues instead of generic style advice. They're pulled from real producer copy.
 - Be decisive — "I'd go with..." not "you could try..."
 
 WHAT YOU KNOW:
@@ -122,13 +156,7 @@ RULES:
  */
 export async function chatWithGabby(opts: {
   messages: ChatMessage[];
-  inventory: Array<{
-    name: string;
-    brand: string | null;
-    category: string | null;
-    price: number | null;
-    stock_qty: number;
-  }>;
+  inventory: InventoryForAI[];
   storeName: string;
 }): Promise<string> {
   const claude = getAnthropic();
@@ -138,12 +166,7 @@ export async function chatWithGabby(opts: {
 
   const inventoryContext =
     opts.inventory.length > 0
-      ? opts.inventory
-          .map(
-            (i) =>
-              `- ${i.name}${i.brand ? ` (${i.brand})` : ""}${i.category ? ` [${i.category}]` : ""} — ${i.price != null ? `$${Number(i.price).toFixed(2)}` : "price N/A"}${i.stock_qty <= 3 ? ` (only ${i.stock_qty} left)` : ""}`,
-          )
-          .join("\n")
+      ? formatInventoryBlock(opts.inventory)
       : "No specific matches right now — recommend from general category knowledge and remind the customer to browse the shelves or ask staff for exact stock.";
 
   const systemPrompt = `You are Gabby, the AI beverage concierge at ${opts.storeName}. You're talking DIRECTLY to a customer (not store staff). Be warm, welcoming, and genuinely excited to help them find exactly what they want.
@@ -166,7 +189,7 @@ For SPECIFIC requests ("Pinot Noir under $30", "peaty Scotch"), go straight to r
 WHEN RECOMMENDING:
 - Pick 1-2 specific products FROM OUR STOCK below
 - Include the price
-- One-sentence "why this is perfect for you"
+- One-sentence "why this is perfect for you" — if the product has tasting notes or a customer summary (the indented "·" line under it), lean on those real flavor descriptors and pairing cues; they come from the producer/retailer, not from your imagination.
 - Tell them where to find it: "It's on the left wall, second shelf" or "Ask any staff member and they'll grab it for you"
 
 STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):
@@ -225,13 +248,7 @@ function stripMarkdownForVoice(s: string): string {
 // Keep backward compat
 export async function askMegan(opts: {
   query: string;
-  inventory: Array<{
-    name: string;
-    brand: string | null;
-    category: string | null;
-    price: number | null;
-    stock_qty: number;
-  }>;
+  inventory: InventoryForAI[];
   storeName: string;
 }): Promise<string> {
   return chatWithMegan({

@@ -86,9 +86,12 @@ export async function POST(req: Request) {
   type Product = {
     name: string;
     brand: string | null;
+    varietal: string | null;
     category: string | null;
     price: number | null;
     stock_qty: number;
+    tasting_notes: string | null;
+    summary_for_customer: string | null;
   };
   let products: Product[] = [];
 
@@ -99,7 +102,9 @@ export async function POST(req: Request) {
   const baseQuery = () =>
     supabase
       .from("inventory")
-      .select("name, brand, category, price, stock_qty")
+      .select(
+        "name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+      )
       .eq("store_id", storeId)
       .gt("stock_qty", 0);
 
@@ -108,6 +113,7 @@ export async function POST(req: Request) {
       .flatMap((k) => [
         `name.ilike.%${k}%`,
         `brand.ilike.%${k}%`,
+        `varietal.ilike.%${k}%`,
         `category.ilike.%${k}%`,
       ])
       .join(",");

@@ -528,3 +528,75 @@ export async function enrichFullAction(
     remaining: remaining ?? 0,
   };
 }
+
+/**
+ * Re-run the full enrichment pipeline for a single product — used from
+ * the item detail page when an owner wants to retry a low-confidence row
+ * (or one that came back with the "image coming soon" placeholder).
+ *
+ * Server action bound to a form; reads `id` from formData. Resets
+ * enriched_at + image_url=null first so the pipeline writes fresh
+ * values instead of being guarded by the "only write when null" merge.
+ */
+export async function reenrichSingleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return;
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("store_id, role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const p = profile as { store_id?: string; role?: string } | null;
+  if (!p?.store_id) return;
+  if (p.role !== "owner" && p.role !== "manager") return;
+
+  // Only fields the merge-partial accumulator treats as "empty" get
+  // re-filled. Wipe the image, notes, and source-confidence markers so
+  // the pipeline runs as if this row had never been touched. Manual
+  // image_source='manual' rows skip this path — an owner chose that
+  // image on purpose, don't clobber it.
+  const { data: existing } = await supabase
+    .from("inventory")
+    .select("id, store_id, name, brand, category, varietal, upc, size_label, image_source")
+    .eq("id", id)
+    .maybeSingle();
+  const row = existing as
+    | {
+        id: string;
+        store_id: string;
+        name: string;
+        brand: string | null;
+        category: string | null;
+        varietal: string | null;
+        upc: string | null;
+        size_label: string | null;
+        image_source: string | null;
+      }
+    | null;
+  if (!row) return;
+  if (row.store_id !== p.store_id) return;
+
+  const wipe: Record<string, unknown> = {
+    tasting_notes: null,
+    summary_for_customer: null,
+    source_confidence: null,
+    enriched_at: null,
+  };
+  // Preserve a manually-set image; otherwise clear it so the pipeline
+  // can try again (placeholder / low-confidence rows get a fresh shot).
+  if (row.image_source !== "manual") {
+    wipe.image_url = null;
+  }
+  await supabase.from("inventory").update(wipe).eq("id", id);
+
+  const { enrichProduct } = await import("@/lib/enrichment/enrichProduct");
+  await enrichProduct(supabase, row);
+
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${id}`);
+}
