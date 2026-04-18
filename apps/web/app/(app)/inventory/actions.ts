@@ -280,3 +280,135 @@ export async function enrichImagesAction(
 
 // Keep the old name as an alias for the existing client import.
 export const enrichImagesFromWikipediaAction = enrichImagesAction;
+
+// ---------------------------------------------------------------------------
+// Full enrichment — image + tasting notes + confidence scoring.
+// Uses the new lib/enrichment pipeline (Open Food Facts → Claude fallback).
+// Processes up to MAX_FULL_ENRICH_PER_RUN unenriched rows per click so a
+// single long request doesn't time out on Vercel's 60s hobby cap.
+// ---------------------------------------------------------------------------
+
+export type FullEnrichState = {
+  error: string | null;
+  processed: number | null;
+  byConfidence: {
+    verified: number;
+    high: number;
+    medium: number;
+    low: number;
+    partial: number;
+    none: number;
+  } | null;
+  remaining: number | null;
+};
+
+const MAX_FULL_ENRICH_PER_RUN = 20;
+
+export async function enrichFullAction(
+  _prev: FullEnrichState,
+): Promise<FullEnrichState> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return {
+      error: "Not authenticated.",
+      processed: null,
+      byConfidence: null,
+      remaining: null,
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("store_id, role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const p = profile as { store_id?: string; role?: string } | null;
+  if (!p?.store_id) {
+    return {
+      error: "No store.",
+      processed: null,
+      byConfidence: null,
+      remaining: null,
+    };
+  }
+  if (p.role !== "owner" && p.role !== "manager") {
+    return {
+      error: "Only owners or managers can enrich.",
+      processed: null,
+      byConfidence: null,
+      remaining: null,
+    };
+  }
+
+  // Pull unenriched rows. enriched_at is null when the pipeline hasn't
+  // touched them yet. Re-runs pick up where the last click left off.
+  const { data: items } = (await supabase
+    .from("inventory")
+    .select("id, store_id, name, brand, category, upc, size_label")
+    .eq("store_id", p.store_id)
+    .is("enriched_at", null)
+    .limit(MAX_FULL_ENRICH_PER_RUN)) as {
+    data:
+      | Array<{
+          id: string;
+          store_id: string;
+          name: string;
+          brand: string | null;
+          category: string | null;
+          upc: string | null;
+          size_label: string | null;
+        }>
+      | null;
+  };
+
+  if (!items || items.length === 0) {
+    return {
+      error: null,
+      processed: 0,
+      byConfidence: {
+        verified: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        partial: 0,
+        none: 0,
+      },
+      remaining: 0,
+    };
+  }
+
+  // Lazy import so this file stays tree-shakeable for server actions that
+  // don't need enrichment.
+  const { enrichProduct } = await import("@/lib/enrichment/enrichProduct");
+
+  const tallies = {
+    verified: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    partial: 0,
+    none: 0,
+  };
+
+  for (const core of items) {
+    const outcome = await enrichProduct(supabase, core);
+    tallies[outcome.confidence]++;
+  }
+
+  // How many still left after this pass? Useful for the "Run again" nudge.
+  const { count: remaining } = await supabase
+    .from("inventory")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", p.store_id)
+    .is("enriched_at", null);
+
+  revalidatePath("/inventory");
+
+  return {
+    error: null,
+    processed: items.length,
+    byConfidence: tallies,
+    remaining: remaining ?? 0,
+  };
+}

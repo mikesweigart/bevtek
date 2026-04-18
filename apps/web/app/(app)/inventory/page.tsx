@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { EnrichButton } from "./EnrichButton";
+import { EnrichFullButton } from "./EnrichFullButton";
 import { ProductImage } from "@/components/ProductImage";
 
 type Item = {
@@ -162,7 +163,12 @@ export default async function InventoryPage({
         </div>
       )}
 
-      {total > 0 && <EnrichButton />}
+      {total > 0 && (
+        <div className="flex flex-col gap-3">
+          <EnrichFullButton />
+          <EnrichButton />
+        </div>
+      )}
 
       {total === 0 ? (
         <div className="rounded-lg border border-dashed border-[color:var(--color-border)] p-10 text-center">
