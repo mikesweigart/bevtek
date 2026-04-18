@@ -9,7 +9,8 @@
 // is enough for the compliance obligation.
 
 import { useActionState, useState } from "react";
-import { confirmAgeAction, type AgeGateState } from "./age-actions";
+import { confirmAgeAction } from "./age-actions";
+import type { AgeGateState } from "./age-types";
 
 export function AgeGate({ storeName }: { storeName: string }) {
   const [state, formAction, pending] = useActionState<AgeGateState, FormData>(

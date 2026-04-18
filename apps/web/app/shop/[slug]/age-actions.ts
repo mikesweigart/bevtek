@@ -1,17 +1,14 @@
 "use server";
 
 // Age-gate server actions. Sets a 30-day cookie on confirmation.
-// Cookie is HttpOnly + Secure so client JS can't forge it, and we key
-// off a hashed timestamp so old cookies from an audit trail are
-// verifiable later if needed.
+//
+// IMPORTANT: Files marked "use server" can ONLY export async functions.
+// Types and constants live in ./age-types.ts so this module stays valid
+// when compiled through Next's server-action bundler.
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-
-export const AGE_COOKIE = "bevtek_age_21plus";
-export const AGE_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 days
-
-export type AgeGateState = { error: string | null };
+import { AGE_COOKIE, AGE_COOKIE_MAX_AGE_SECONDS, type AgeGateState } from "./age-types";
 
 export async function confirmAgeAction(
   _prev: AgeGateState,
