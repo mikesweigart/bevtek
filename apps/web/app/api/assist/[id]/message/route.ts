@@ -10,6 +10,7 @@ import {
   loadLiveSession,
   type AssistMessage,
 } from "@/lib/assist/service";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,11 @@ export async function POST(
 ) {
   const { id } = await ctx.params;
   if (!id) return json({ error: "missing session id" }, { status: 400 });
+
+  // Rate limit keyed by the session id itself — one QR-scanned session
+  // should never hammer Claude.
+  const rl = await checkRate("assist-message", identifyRequest(req, id));
+  if (!rl.success) return rateLimitResponse(rl);
 
   let body: { userMessage?: string };
   try {
@@ -162,6 +168,7 @@ export async function POST(
         inventory: products,
         featured,
         storeName: store.name,
+        storeId: store.id,
       });
     } catch (e) {
       return json(

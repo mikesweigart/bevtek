@@ -2,6 +2,60 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
+// ---------------------------------------------------------------------------
+// Prompt versioning.
+//
+// Every prompt change bumps the matching version string. These get logged on
+// every Claude call (see logClaudeCall below) so we can correlate quality
+// drops / cost spikes / hallucination rates back to a specific revision.
+//
+// Rule: if you change the prompt body, bump the patch. If you change the
+// structure of what gets passed in (new context block, new rules section),
+// bump the minor. Never re-use a version number.
+// ---------------------------------------------------------------------------
+export const PROMPT_VERSIONS = {
+  megan: "megan@1.0.0",
+  gabby: "gabby@1.1.0", // v1.1 added [FEATURED]/[SPONSORED] + responsibility rules
+  moduleGen: "module-gen@1.0.0",
+} as const;
+
+export const CLAUDE_MODEL = "claude-sonnet-4-6";
+
+export type ClaudeCallLog = {
+  feature: "megan" | "gabby" | "module-gen";
+  prompt_version: string;
+  model: string;
+  store_id?: string | null;
+  store_name?: string | null;
+  input_message_count: number;
+  inventory_count: number;
+  featured_count?: number;
+  latency_ms: number;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  ok: boolean;
+  error_class?: string | null;
+};
+
+// Pluggable sink. Default writes a one-line structured log to stdout so
+// Vercel captures it; prod can override with an Axiom/Sentry transport.
+let claudeCallSink: (entry: ClaudeCallLog) => void = (entry) => {
+  // eslint-disable-next-line no-console
+  console.log("[claude.call]", JSON.stringify(entry));
+};
+
+export function setClaudeCallSink(fn: (entry: ClaudeCallLog) => void) {
+  claudeCallSink = fn;
+}
+
+function logClaudeCall(entry: ClaudeCallLog) {
+  try {
+    claudeCallSink(entry);
+  } catch {
+    // Never let telemetry break the user-facing path.
+  }
+}
+
 let cached: Anthropic | null = null;
 
 export function getAnthropic(): Anthropic | null {
@@ -92,6 +146,7 @@ export async function chatWithMegan(opts: {
   messages: ChatMessage[];
   inventory: InventoryForAI[];
   storeName: string;
+  storeId?: string | null;
 }): Promise<string> {
   const claude = getAnthropic();
   if (!claude) {
@@ -148,18 +203,45 @@ RULES:
 - When recommending, be decisive: "I'd go with the [product] at $XX"
 - If we don't carry what they want, say so honestly and suggest the closest thing we DO have`;
 
-  const message = await claude.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 300,
-    system: systemPrompt,
-    messages: opts.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-  });
-
-  const textBlock = message.content.find((b) => b.type === "text");
-  return textBlock?.text ?? "I couldn't generate a response. Please try again.";
+  const startedAt = Date.now();
+  let ok = false;
+  let errorClass: string | null = null;
+  let inputTokens: number | null = null;
+  let outputTokens: number | null = null;
+  try {
+    const message = await claude.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: opts.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    });
+    inputTokens = message.usage?.input_tokens ?? null;
+    outputTokens = message.usage?.output_tokens ?? null;
+    ok = true;
+    const textBlock = message.content.find((b) => b.type === "text");
+    return textBlock?.text ?? "I couldn't generate a response. Please try again.";
+  } catch (e) {
+    errorClass = (e as Error)?.name ?? "UnknownError";
+    throw e;
+  } finally {
+    logClaudeCall({
+      feature: "megan",
+      prompt_version: PROMPT_VERSIONS.megan,
+      model: CLAUDE_MODEL,
+      store_id: opts.storeId ?? null,
+      store_name: opts.storeName,
+      input_message_count: opts.messages.length,
+      inventory_count: opts.inventory.length,
+      latency_ms: Date.now() - startedAt,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      ok,
+      error_class: errorClass,
+    });
+  }
 }
 
 /**
@@ -209,6 +291,7 @@ export async function chatWithGabby(opts: {
   inventory: InventoryForAI[];
   featured?: FeaturedForAI[];
   storeName: string;
+  storeId?: string | null;
 }): Promise<string> {
   const claude = getAnthropic();
   if (!claude) {
@@ -284,19 +367,141 @@ FORMATTING (VERY IMPORTANT — your replies are read aloud by a text-to-speech v
 RESPONSIBILITY:
 - When you actually recommend a specific bottle, close with a light, human responsibility cue — "enjoy it responsibly" or "sip it slow, and have fun" — just once, in a natural tone. Never preachy, never on every reply. On casual small-talk turns where no recommendation is made, skip it entirely.`;
 
-  const message = await claude.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 300,
-    system: systemPrompt,
-    messages: opts.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-  });
-
-  const textBlock = message.content.find((b) => b.type === "text");
-  const raw = textBlock?.text ?? "Let me think about that, could you tell me a bit more?";
+  const startedAt = Date.now();
+  let ok = false;
+  let errorClass: string | null = null;
+  let inputTokens: number | null = null;
+  let outputTokens: number | null = null;
+  let raw = "";
+  try {
+    const message = await claude.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: opts.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    });
+    inputTokens = message.usage?.input_tokens ?? null;
+    outputTokens = message.usage?.output_tokens ?? null;
+    ok = true;
+    const textBlock = message.content.find((b) => b.type === "text");
+    raw = textBlock?.text ?? "Let me think about that, could you tell me a bit more?";
+  } catch (e) {
+    errorClass = (e as Error)?.name ?? "UnknownError";
+    throw e;
+  } finally {
+    // Hallucination gate: flag (don't throw) if Gabby mentions a product
+    // that isn't in the context we handed her. Gets surfaced in the log so
+    // you can see drift per prompt version without blocking user replies.
+    const hallucinated = ok ? detectHallucinatedProducts(raw, opts.inventory, opts.featured ?? []) : [];
+    logClaudeCall({
+      feature: "gabby",
+      prompt_version: PROMPT_VERSIONS.gabby,
+      model: CLAUDE_MODEL,
+      store_id: opts.storeId ?? null,
+      store_name: opts.storeName,
+      input_message_count: opts.messages.length,
+      inventory_count: opts.inventory.length,
+      featured_count: (opts.featured ?? []).length,
+      latency_ms: Date.now() - startedAt,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      ok,
+      error_class: errorClass,
+    });
+    if (hallucinated.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[gabby.hallucination]",
+        JSON.stringify({
+          prompt_version: PROMPT_VERSIONS.gabby,
+          store_id: opts.storeId ?? null,
+          suspected: hallucinated,
+          excerpt: raw.slice(0, 200),
+        }),
+      );
+    }
+  }
   return stripMarkdownForVoice(raw);
+}
+
+/**
+ * Heuristic check for product hallucination. Scans Gabby's reply for
+ * capitalized noun phrases that look like product/brand names and flags
+ * the ones that don't appear in the inventory or featured context she
+ * was actually given.
+ *
+ * Deliberately low-precision: we'd rather over-flag in logs (which a
+ * human or Claude-judge reviews) than block a legitimate reply. This is
+ * an observability signal, not a filter.
+ *
+ * Common false positives we ignore: varietal/category names (Merlot,
+ * Chardonnay), generic words (Wine, Bourbon), and anything shorter than
+ * 4 chars.
+ */
+const PRODUCT_FALSE_POSITIVES = new Set([
+  // Varietals / styles (generic, not product-specific)
+  "merlot", "cabernet", "chardonnay", "pinot", "noir", "grigio", "sauvignon",
+  "blanc", "riesling", "syrah", "shiraz", "malbec", "zinfandel", "bordeaux",
+  "burgundy", "champagne", "prosecco", "cava", "rioja", "chianti", "barolo",
+  "napa", "sonoma", "bourbon", "scotch", "whiskey", "whisky", "rye", "gin",
+  "vodka", "tequila", "mezcal", "rum", "cognac", "brandy", "ipa", "lager",
+  "pilsner", "stout", "porter", "hefeweizen", "witbier", "gose",
+  // Generic nouns
+  "wine", "beer", "spirits", "cocktail", "liqueur", "bottle", "glass",
+  "store", "shelf", "staff", "gabby", "vivino", "untappd", "distiller",
+  // Common words that capitalize at sentence start
+  "the", "this", "that", "you", "your", "our", "let", "here", "there",
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+  "january", "february", "march", "april", "june", "july", "august",
+  "september", "october", "november", "december",
+]);
+
+export function detectHallucinatedProducts(
+  reply: string,
+  inventory: InventoryForAI[],
+  featured: FeaturedForAI[],
+): string[] {
+  // Build a haystack of every token Gabby legitimately knows about:
+  // product name words, brand words, varietals. Lowercase, 4+ chars.
+  const haystack = new Set<string>();
+  const addPhrase = (s: string | null | undefined) => {
+    if (!s) return;
+    for (const tok of s.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
+      if (tok.length >= 4) haystack.add(tok);
+    }
+  };
+  for (const i of inventory) {
+    addPhrase(i.name);
+    addPhrase(i.brand);
+    addPhrase(i.varietal);
+  }
+  for (const f of featured) {
+    addPhrase(f.name);
+    addPhrase(f.brand);
+    addPhrase(f.varietal);
+  }
+
+  // Extract "product-shaped" phrases: runs of 1–4 Capitalized words.
+  // E.g. "Caymus Cabernet", "Dom Pérignon", "Macallan 12".
+  const phrases = reply.match(/\b([A-Z][\p{L}0-9'’&.-]+(?:\s+[A-Z][\p{L}0-9'’&.-]+){0,3})\b/gu) ?? [];
+  const suspects: string[] = [];
+  for (const phrase of phrases) {
+    const norm = phrase.toLowerCase();
+    const first = norm.split(/\s+/)[0];
+    if (PRODUCT_FALSE_POSITIVES.has(first)) continue;
+    if (norm.length < 4) continue;
+    // If ANY token in the phrase is in the haystack, we treat the whole
+    // phrase as grounded. Gabby often paraphrases — "Caymus Cab" should
+    // pass if "caymus" is known.
+    const tokens = norm.split(/\s+/).filter((t) => t.length >= 4);
+    const grounded = tokens.some((t) => haystack.has(t));
+    if (!grounded) suspects.push(phrase);
+  }
+  // Dedupe preserving order.
+  return Array.from(new Set(suspects));
 }
 
 /**
@@ -351,8 +556,9 @@ export async function generateModuleFromText(opts: {
   const claude = getAnthropic();
   if (!claude) return null;
 
+  const startedAt = Date.now();
   const message = await claude.messages.create({
-    model: "claude-sonnet-4-6",
+    model: CLAUDE_MODEL,
     max_tokens: 2000,
     system: `You are a master sommelier and beverage education expert. You create training modules for liquor store staff.
 
@@ -385,6 +591,17 @@ Respond in JSON format:
   });
 
   const textBlock = message.content.find((b) => b.type === "text");
+  logClaudeCall({
+    feature: "module-gen",
+    prompt_version: PROMPT_VERSIONS.moduleGen,
+    model: CLAUDE_MODEL,
+    input_message_count: 1,
+    inventory_count: 0,
+    latency_ms: Date.now() - startedAt,
+    input_tokens: message.usage?.input_tokens ?? null,
+    output_tokens: message.usage?.output_tokens ?? null,
+    ok: Boolean(textBlock?.text),
+  });
   if (!textBlock?.text) return null;
 
   try {

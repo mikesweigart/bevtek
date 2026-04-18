@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -138,6 +139,8 @@ export async function POST(req: Request) {
   }
   const storeId = body.storeId;
   if (!storeId) return json({ error: "storeId required" }, { status: 400 });
+  const rl = await checkRate("gabby-recommend", identifyRequest(req, storeId));
+  if (!rl.success) return rateLimitResponse(rl);
   const filters: Filters = body.filters ?? {};
   const limit = Math.min(Math.max(body.limit ?? 20, 1), 50);
 

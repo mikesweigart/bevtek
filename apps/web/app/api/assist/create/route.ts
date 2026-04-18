@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import type { AssistMessage } from "@/lib/assist/service";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,8 @@ export async function POST(req: Request) {
   if (!auth.user) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
+  const rl = await checkRate("assist-create", identifyRequest(req, auth.user.id));
+  if (!rl.success) return rateLimitResponse(rl);
 
   const { data: urow } = await supabase
     .from("users")

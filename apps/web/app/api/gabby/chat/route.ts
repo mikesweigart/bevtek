@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { chatWithGabby, isAIConfigured, type ChatMessage, type FeaturedForAI } from "@/lib/ai/claude";
 import { fetchActivePromotions } from "@/lib/promotions/fetch";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,14 @@ export async function POST(req: Request) {
   } catch {
     return json({ error: "bad json" }, { status: 400 });
   }
+
+  // Rate limit first — identify by sessionId when present so a single
+  // shopper on shared store Wi-Fi doesn't starve their neighbor.
+  const rl = await checkRate(
+    "gabby-chat",
+    identifyRequest(req, body.sessionId ?? null),
+  );
+  if (!rl.success) return rateLimitResponse(rl);
 
   const storeId = body.storeId;
   const history: ChatMessage[] = Array.isArray(body.messages) ? body.messages : [];
@@ -181,6 +190,7 @@ export async function POST(req: Request) {
       inventory: products,
       featured,
       storeName: store.name,
+      storeId: store.id,
     });
 
     // Fire-and-forget: log the conversation turn so owners can review
