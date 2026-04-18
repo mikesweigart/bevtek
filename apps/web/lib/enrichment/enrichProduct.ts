@@ -26,9 +26,11 @@ import { scoreConfidence } from "./confidence";
 import { lookupByUpc, searchByName } from "./providers/upcLookup";
 import { getCachedImage, setCachedImage } from "./providers/imageCache";
 import { getTastingNotes } from "./providers/tastingNotes";
+import { lookupWikipedia } from "./providers/wikipediaLookup";
+import { lookupProducerSite } from "./providers/producerSite";
 
 /** Bumped whenever the pipeline changes — drives the backfill rerun gate. */
-export const ENRICHMENT_VERSION = 1;
+export const ENRICHMENT_VERSION = 2;
 
 export type EnrichOutcome = {
   product_id: string;
@@ -98,6 +100,36 @@ export async function enrichProduct(
     // Opportunistically capture a description if pass 1a missed one too.
     if (!externalDesc && byName.description) {
       externalDesc = byName.description;
+    }
+  }
+
+  // Pass 1c: Wikipedia. Most well-known consumer brands (Tito's, Sierra
+  // Nevada, Maker's Mark, Dom Pérignon) have articles with a logo or
+  // bottle image on upload.wikimedia.org — CC-BY-SA, safe to rehost.
+  if (!acc.image_url) {
+    const wiki = await lookupWikipedia(core);
+    if (wiki.image_url) {
+      acc = mergePartial(acc, {
+        image_url: wiki.image_url,
+        image_source: "wikipedia",
+      });
+    }
+  }
+
+  // Pass 1d: Producer homepage og:image. Guesses domains from the brand
+  // name (titos.com, drinktitos.com, silveroakwinery.com, …) and pulls
+  // the Open Graph image/description from the first 200. This is the
+  // same image every social platform pulls when the brand URL is shared.
+  if (!acc.image_url) {
+    const prod = await lookupProducerSite(core);
+    if (prod.image_url) {
+      acc = mergePartial(acc, {
+        image_url: prod.image_url,
+        image_source: "producer_site",
+      });
+    }
+    if (!externalDesc && prod.description) {
+      externalDesc = prod.description;
     }
   }
 

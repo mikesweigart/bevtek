@@ -39,6 +39,7 @@ export type EnrichmentResult = {
 export type ImageSource =
   | "cache"
   | "open_food_facts"
+  | "wikipedia"
   | "producer_site"
   | "store_supplied"
   | null;

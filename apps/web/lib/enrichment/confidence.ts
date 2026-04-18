@@ -49,6 +49,7 @@ export function scoreConfidence(r: EnrichmentResult): SourceConfidence {
 function imageTier(s: ImageSource | null): "cache" | "provider" | "fallback" {
   if (s === "cache") return "cache";
   if (s === "open_food_facts" || s === "producer_site") return "provider";
+  if (s === "wikipedia") return "fallback"; // brand logo, not a bottle shot
   return "fallback"; // store_supplied / null → fallback
 }
 
