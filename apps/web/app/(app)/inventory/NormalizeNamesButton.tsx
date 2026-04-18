@@ -46,6 +46,17 @@ export function NormalizeNamesButton() {
 
       if ((s.processed ?? 0) === 0 || (s.remaining ?? 0) === 0) break;
 
+      // Safety net: if we processed rows but wrote ZERO brands, we're
+      // stuck in a silent-failure loop (usually means Haiku returned
+      // non-parseable output or ANTHROPIC_API_KEY is unset). Stop after
+      // two consecutive dry batches and surface the problem.
+      if ((s.processed ?? 0) > 0 && (s.parsed ?? 0) === 0) {
+        setError(
+          "Haiku processed rows but wrote 0 brands. Visit /api/debug/normalize to see the raw Claude response. Usually means ANTHROPIC_API_KEY is missing or the JSON response isn't parsing.",
+        );
+        break;
+      }
+
       // Brief UI-responsiveness pause — Haiku is cheap, no external
       // rate-limit concern here.
       await sleep(400);

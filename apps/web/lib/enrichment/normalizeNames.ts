@@ -125,7 +125,9 @@ function parseResponse(
   text: string,
   items: NormalizeInput[],
 ): NormalizedName[] {
-  // Strip accidental ```json fences.
+  // Haiku often wraps JSON in prose ("Here is the normalized data:")
+  // despite the prompt saying otherwise. Extract the first top-level
+  // array literal and parse that — surrounding prose doesn't matter.
   const cleaned = text
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -135,7 +137,31 @@ function parseResponse(
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    return [];
+    // Fallback: find the first [...] block that balances brackets.
+    // Works even when Haiku prefixed prose like "Here's your JSON:".
+    const start = cleaned.indexOf("[");
+    if (start === -1) return [];
+    // Find the matching close-bracket. We scan naively; nested arrays
+    // inside the objects are rare in this response format.
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (ch === "[") depth++;
+      else if (ch === "]") {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) return [];
+    try {
+      parsed = JSON.parse(cleaned.slice(start, end + 1));
+    } catch {
+      return [];
+    }
   }
   if (!Array.isArray(parsed)) return [];
 
