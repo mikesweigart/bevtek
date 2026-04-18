@@ -16,6 +16,7 @@ import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import GuidedFlow from "../components/GuidedFlow";
 import { prepareForSpeech } from "../lib/voiceSafety";
+import { HandoffModal } from "../components/HandoffModal";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -47,6 +48,8 @@ export default function AskGabbyScreen() {
   const [sending, setSending] = useState(false);
   const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
   const [mode, setMode] = useState<"chat" | "guided">("chat");
+  const [role, setRole] = useState<string | null>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
   // Stable per-mount session id so the owner's Conversations dashboard
   // groups this whole chat thread under one session, not one row per turn.
   const sessionIdRef = useRef<string>(
@@ -83,10 +86,14 @@ export default function AskGabbyScreen() {
         if (authData?.user) {
           const { data: urow } = await supabase
             .from("users")
-            .select("store_id, stores(id, name)")
+            .select("role, store_id, stores(id, name)")
             .eq("id", authData.user.id)
             .maybeSingle();
-          const s = (urow as any)?.stores;
+          const row = urow as
+            | { role: string | null; stores: { id: string; name: string } | null }
+            | null;
+          const s = row?.stores;
+          if (row?.role) setRole(row.role);
           if (s) {
             setStoreId(s.id);
             setStoreName(s.name);
@@ -187,7 +194,28 @@ export default function AskGabbyScreen() {
                 : "connecting..."}
           </Text>
         </View>
+        {/*
+         * Hand-off button — employees only, and only once there's a real
+         * conversation to pass. Keeps the header clean for customers on
+         * the same screen (customers never see this).
+         */}
+        {role && role !== "customer" && messages.length >= 2 && (
+          <TouchableOpacity
+            style={styles.handoffBtn}
+            onPress={() => setHandoffOpen(true)}
+            hitSlop={8}
+          >
+            <Text style={styles.handoffIcon}>📲</Text>
+            <Text style={styles.handoffText}>Hand off</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      <HandoffModal
+        visible={handoffOpen}
+        onClose={() => setHandoffOpen(false)}
+        messages={messages}
+      />
 
       {mode === "guided" ? (
         <GuidedFlow
@@ -336,6 +364,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { color: "#fff", fontWeight: "700" },
+  handoffBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.gold,
+    backgroundColor: "#FFF",
+  },
+  handoffIcon: { fontSize: 14 },
+  handoffText: {
+    color: colors.gold,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   name: { fontSize: 18, fontWeight: "700", color: colors.fg, letterSpacing: -0.3 },
   tagline: { fontSize: 12, color: colors.gold, fontStyle: "italic", fontWeight: "500", marginTop: 1 },
   sub: { fontSize: 10, color: colors.muted, marginTop: 2 },
