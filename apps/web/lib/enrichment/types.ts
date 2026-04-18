@@ -14,6 +14,8 @@ export type ProductCore = {
   brand: string | null;
   /** Normalized: 'wine' | 'beer' | 'spirits' | 'mixer' | 'garnish'. */
   category: string | null;
+  /** Grape / spirit type / beer style — "Pinot Grigio", "Bourbon", "IPA". */
+  varietal: string | null;
   /** Raw UPC/EAN from the CSV, digits only. */
   upc: string | null;
   /** Human-readable size — "750ml", "6 pk 12oz". */
@@ -41,6 +43,8 @@ export type ImageSource =
   | "open_food_facts"
   | "wikipedia"
   | "producer_site"
+  | "retail_site"
+  | "placeholder"
   | "store_supplied"
   | null;
 
@@ -48,6 +52,7 @@ export type TastingNotesSource =
   | "cache"
   | "open_food_facts"
   | "producer_site"
+  | "retail_site"
   | "generated";
 
 export type ReviewSource = "vivino" | "untappd" | "distiller";

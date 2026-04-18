@@ -28,9 +28,13 @@ import { getCachedImage, setCachedImage } from "./providers/imageCache";
 import { getTastingNotes } from "./providers/tastingNotes";
 import { lookupWikipedia } from "./providers/wikipediaLookup";
 import { lookupProducerSite } from "./providers/producerSite";
+import { lookupRetailSite } from "./providers/retailLookup";
 
 /** Bumped whenever the pipeline changes — drives the backfill rerun gate. */
-export const ENRICHMENT_VERSION = 2;
+export const ENRICHMENT_VERSION = 3;
+
+/** Public URL of the "image coming soon" fallback served from /public. */
+const PLACEHOLDER_IMAGE_URL = "/bottle-coming-soon.svg";
 
 export type EnrichOutcome = {
   product_id: string;
@@ -61,13 +65,22 @@ export async function enrichProduct(
   }
 
   // External description is reused by pass 2, so we capture it here
-  // even when the image came from cache.
+  // even when the image came from cache. Track where it came from so
+  // tasting_notes_source reflects the real provenance, not a guess.
   let externalDesc: string | null = null;
+  let externalDescSource:
+    | "open_food_facts"
+    | "producer_site"
+    | "retail_site"
+    | null = null;
 
   if (!acc.image_url || !externalDesc) {
     // Pass 1a: UPC lookup (fastest, most reliable when UPC is present).
     const off = await lookupByUpc(core);
-    externalDesc = off.description;
+    if (off.description) {
+      externalDesc = off.description;
+      externalDescSource = "open_food_facts";
+    }
 
     if (!acc.image_url && off.image_url) {
       acc = mergePartial(acc, {
@@ -100,6 +113,7 @@ export async function enrichProduct(
     // Opportunistically capture a description if pass 1a missed one too.
     if (!externalDesc && byName.description) {
       externalDesc = byName.description;
+      externalDescSource = "open_food_facts";
     }
   }
 
@@ -130,17 +144,54 @@ export async function enrichProduct(
     }
     if (!externalDesc && prod.description) {
       externalDesc = prod.description;
+      externalDescSource = "producer_site";
     }
+  }
+
+  // Pass 1e: Specialist retailers (Total Wine, ReserveBar, Wine.com).
+  // These carry the long tail — everything that wasn't in OFF, doesn't
+  // have a Wikipedia article, and whose producer site is either hard to
+  // guess or behind heavy JS. The scraped product pages also tend to
+  // carry the richest tasting-notes copy, so we capture description even
+  // when we already have an image from an earlier pass.
+  if (!acc.image_url || !externalDesc) {
+    const retail = await lookupRetailSite(core);
+    if (!acc.image_url && retail.image_url) {
+      acc = mergePartial(acc, {
+        image_url: retail.image_url,
+        image_source: "retail_site",
+      });
+    }
+    if (!externalDesc && retail.description) {
+      externalDesc = retail.description;
+      externalDescSource = "retail_site";
+    }
+  }
+
+  // Pass 1f: Placeholder. Every shopper-facing row must have *something*
+  // to render — a broken or missing image looks worse than an honest
+  // "coming soon" card. image_source = "placeholder" so we can later
+  // filter for retry-ready rows.
+  if (!acc.image_url) {
+    acc = mergePartial(acc, {
+      image_url: PLACEHOLDER_IMAGE_URL,
+      image_source: "placeholder",
+    });
   }
 
   // ---------- Pass 2: tasting notes ----------
   const notes = await getTastingNotes(core, externalDesc);
   if (notes.tasting_notes) {
+    // When Haiku distilled real source material, we surface the ORIGINAL
+    // provider as the source (retail_site / producer_site / OFF). Only
+    // pure generations get flagged "generated" so confidence scoring can
+    // de-boost them vs. distillations of real producer copy.
+    const notesSource = notes.generated
+      ? "generated"
+      : externalDescSource ?? "open_food_facts";
     acc = mergePartial(acc, {
       tasting_notes: notes.tasting_notes,
-      tasting_notes_source: notes.generated
-        ? "generated"
-        : "open_food_facts",
+      tasting_notes_source: notesSource,
       summary_for_customer: notes.summary_for_customer,
     });
   }

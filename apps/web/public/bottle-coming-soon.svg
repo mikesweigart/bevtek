@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300" role="img" aria-label="Image coming soon">
+  <rect width="200" height="300" fill="#F5F1E8"/>
+  <!-- Bottle silhouette -->
+  <g fill="#C8984E" opacity="0.2">
+    <!-- Neck -->
+    <rect x="88" y="40" width="24" height="50" rx="3"/>
+    <!-- Shoulder -->
+    <path d="M80 90 Q80 100 70 110 L70 250 Q70 270 90 270 L110 270 Q130 270 130 250 L130 110 Q120 100 120 90 Z"/>
+    <!-- Cap -->
+    <rect x="86" y="28" width="28" height="14" rx="2"/>
+  </g>
+  <!-- Label placeholder on bottle -->
+  <rect x="78" y="150" width="44" height="70" fill="#FFFFFF" opacity="0.6"/>
+  <!-- Caption -->
+  <text x="100" y="290" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#8C7341" letter-spacing="1">
+    IMAGE COMING SOON
+  </text>
+</svg>

@@ -27,23 +27,38 @@ export async function getTastingNotes(
   core: ProductCore,
   externalDesc: string | null,
 ): Promise<TastingNotesResult> {
-  // Case 1: external description is usable as-is. Trim and return.
-  if (externalDesc && externalDesc.trim().length >= 20) {
-    const notes = clip(externalDesc, MAX_CHARS);
-    return {
-      tasting_notes: notes,
-      summary_for_customer: null, // LLM fills this in a separate pass if needed
-      generated: false,
-    };
-  }
-
-  // Case 2: LLM fallback. Requires ANTHROPIC_API_KEY; otherwise null.
   const claude = getAnthropic();
   if (!claude) {
+    // No AI configured — fall back to raw external content if it's
+    // long enough to be useful, else give up.
+    if (externalDesc && externalDesc.trim().length >= 40) {
+      return {
+        tasting_notes: clip(externalDesc.trim(), MAX_CHARS),
+        summary_for_customer: null,
+        generated: false,
+      };
+    }
     return { tasting_notes: null, summary_for_customer: null, generated: false };
   }
 
-  const prompt = buildPrompt(core);
+  // Two code paths depending on whether we have rich source material:
+  //
+  // - DISTILL: we scraped real tasting content (ReserveBar's "TASTING
+  //   NOTES" block, a producer site's product description, OFF's
+  //   generic_name + ingredients). Haiku rewrites it into Gabby's
+  //   structured two-field format, preserving the producer's own
+  //   flavor notes instead of hallucinating new ones. This is the
+  //   highest-quality outcome — real source material, Gabby's voice.
+  //
+  // - GENERATE: no external content found. Haiku writes notes grounded
+  //   only on brand + varietal + category. Still good when varietal is
+  //   populated, but strictly style-level — no producer-specific flavor
+  //   claims.
+  const hasExternal = !!externalDesc && externalDesc.trim().length >= 40;
+  const prompt = hasExternal
+    ? buildDistillPrompt(core, externalDesc!.trim())
+    : buildPrompt(core);
+
   try {
     const res = await claude.messages.create({
       model: "claude-3-5-haiku-latest",
@@ -64,32 +79,91 @@ export async function getTastingNotes(
     return {
       tasting_notes: parsed.tasting_notes,
       summary_for_customer: parsed.summary_for_customer,
-      generated: true,
+      // "generated" is true only when we had to invent from scratch —
+      // distilled-from-source output is higher confidence and is
+      // surfaced with the original provider's source label by the
+      // orchestrator.
+      generated: !hasExternal,
     };
   } catch {
+    // Last-ditch fallback to the raw external content so we at least
+    // have *something* to show rather than a blank card.
+    if (hasExternal) {
+      return {
+        tasting_notes: clip(externalDesc!.trim(), MAX_CHARS),
+        summary_for_customer: null,
+        generated: false,
+      };
+    }
     return { tasting_notes: null, summary_for_customer: null, generated: false };
   }
 }
 
-function buildPrompt(core: ProductCore): string {
-  const name = core.name;
-  const brand = core.brand ? ` (brand: ${core.brand})` : "";
-  const cat = core.category ? ` — category: ${core.category}` : "";
-  const size = core.size_label ? ` — size: ${core.size_label}` : "";
+/**
+ * Distill real source material (producer site / retailer tasting notes
+ * section / OFF description) into Gabby's structured format. Do NOT
+ * invent new flavors — faithfully summarize what's there.
+ */
+function buildDistillPrompt(core: ProductCore, source: string): string {
+  const facts: string[] = [`Name: ${core.name}`];
+  if (core.brand) facts.push(`Brand: ${core.brand}`);
+  if (core.varietal) facts.push(`Varietal/Style: ${core.varietal}`);
+  if (core.category) facts.push(`Category: ${core.category}`);
 
-  return `You are a beverage expert writing for a store's AI shopping assistant (Gabby).
-Write tasting notes for this product based ONLY on widely-known, generic characteristics of the style/category. Do NOT invent vintages, awards, regions, or specific flavor descriptors you aren't confident are accurate.
+  return `You are rewriting product copy into a beverage AI assistant's voice (Gabby). Shoppers read these notes to decide what to buy and what to pair with dinner.
 
-Product: ${name}${brand}${cat}${size}
+Product facts:
+${facts.map((f) => `- ${f}`).join("\n")}
 
-Return JSON with exactly two keys:
+Source material (from the producer / retailer — may be marketing prose, tasting notes, or both):
+"""
+${source.slice(0, 1500)}
+"""
+
+Your job: rewrite the source into Gabby's structured JSON. Preserve flavor descriptors, aging/production notes, and recommended pairings FROM THE SOURCE. Do not invent new flavors, regions, or awards that aren't in the source.
+
+Return JSON with exactly these keys:
 {
-  "tasting_notes": "≤180 characters. Short, structured, factual. Example: 'Dark cherry, cocoa, and toasted oak. Full-bodied with firm tannins.'",
-  "summary_for_customer": "≤240 characters. One friendly sentence Gabby would say. Example: 'If you like bold reds that feel like a steak dinner, this is the one.'"
+  "tasting_notes": "≤180 characters. Flavor + structure + finish. Example: 'Almonds, vanilla, and light fruit on the nose. Smooth and creamy palate with a dry, clean finish.'",
+  "summary_for_customer": "≤240 characters. One friendly sentence Gabby would say, including a pairing or occasion suggestion FROM THE SOURCE if one is mentioned. Example: 'A classic light rum — perfect for mojitos, daiquiris, and anytime you want a smooth cocktail base.'"
 }
 
-If you cannot write either with confidence, return null for that field.
-Output ONLY the JSON, no prose.`;
+RULES:
+- Drop any promotional / shipping / sale language from the source.
+- If the source is short or generic, return null for any field you can't fill with confidence.
+- No markdown fences, no prose outside the JSON.`;
+}
+
+function buildPrompt(core: ProductCore): string {
+  // We present the facts as a labeled list so Haiku can ground on each
+  // field independently. Varietal is the single biggest signal for
+  // tasting-note quality — it's what turns "CAPT MORGAN SPICED RUM" from
+  // a guess into a confident style description.
+  const facts: string[] = [`Name: ${core.name}`];
+  if (core.brand) facts.push(`Brand: ${core.brand}`);
+  if (core.varietal) facts.push(`Varietal/Style: ${core.varietal}`);
+  if (core.category) facts.push(`Category: ${core.category}`);
+  if (core.size_label) facts.push(`Size: ${core.size_label}`);
+
+  return `You are a beverage expert writing for a store's AI shopping assistant (Gabby). Shoppers read these notes to decide what to buy and what to pair with dinner, so be specific and useful.
+
+Write tasting notes grounded in the well-known characteristics of the VARIETAL/STYLE. Do NOT invent vintages, awards, regions, producer anecdotes, or proof statements that aren't in the facts below.
+
+Product facts:
+${facts.map((f) => `- ${f}`).join("\n")}
+
+Return JSON with exactly these keys:
+{
+  "tasting_notes": "≤180 characters. Flavor + structure + finish, in that order. Example: 'Vanilla, caramel, and baking spice lead into a warm, slightly sweet finish. Smooth and easy to mix.'",
+  "summary_for_customer": "≤240 characters. One friendly sentence Gabby would say, including a FOOD OR OCCASION pairing suggestion. Example: 'Great in a classic rum and Coke, or pour it over ice with a splash of ginger beer on a warm afternoon.'"
+}
+
+RULES:
+- If varietal is given, use it confidently. If not, infer cautiously from the name; never invent specific regions or awards.
+- Pairings must be generic to the style (a Cabernet with steak, an IPA with spicy food, a Tequila Reposado with tacos) — not tied to a specific producer.
+- If you truly cannot write a field with confidence, return null for that field.
+
+Output ONLY the JSON, no prose, no markdown fences.`;
 }
 
 function parseResponse(text: string): {

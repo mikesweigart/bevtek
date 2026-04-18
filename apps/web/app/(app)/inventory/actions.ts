@@ -453,7 +453,9 @@ export async function enrichFullAction(
   // touched them yet. Re-runs pick up where the last click left off.
   const { data: items } = (await supabase
     .from("inventory")
-    .select("id, store_id, name, brand, category, upc, size_label")
+    .select(
+      "id, store_id, name, brand, category, varietal, upc, size_label",
+    )
     .eq("store_id", p.store_id)
     .is("enriched_at", null)
     .limit(MAX_FULL_ENRICH_PER_RUN)) as {
@@ -464,6 +466,7 @@ export async function enrichFullAction(
           name: string;
           brand: string | null;
           category: string | null;
+          varietal: string | null;
           upc: string | null;
           size_label: string | null;
         }>

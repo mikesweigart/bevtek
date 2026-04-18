@@ -48,15 +48,20 @@ export function scoreConfidence(r: EnrichmentResult): SourceConfidence {
 
 function imageTier(s: ImageSource | null): "cache" | "provider" | "fallback" {
   if (s === "cache") return "cache";
-  if (s === "open_food_facts" || s === "producer_site") return "provider";
-  if (s === "wikipedia") return "fallback"; // brand logo, not a bottle shot
-  return "fallback"; // store_supplied / null → fallback
+  if (s === "open_food_facts" || s === "producer_site" || s === "retail_site") {
+    return "provider";
+  }
+  if (s === "wikipedia") return "fallback"; // usually a logo, not a bottle
+  if (s === "placeholder") return "fallback"; // honest "coming soon" card
+  return "fallback"; // store_supplied / null
 }
 
 function notesTier_(
   s: TastingNotesSource | null,
 ): "cache" | "provider" | "fallback" {
   if (s === "cache") return "cache";
-  if (s === "open_food_facts" || s === "producer_site") return "provider";
+  if (s === "open_food_facts" || s === "producer_site" || s === "retail_site") {
+    return "provider";
+  }
   return "fallback"; // generated / null
 }
