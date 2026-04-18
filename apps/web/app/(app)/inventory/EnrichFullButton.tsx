@@ -100,7 +100,9 @@ export function EnrichFullButton() {
         setRemaining(s.remaining);
       }
       if ((s.processed ?? 0) === 0 || (s.remaining ?? 0) === 0) break;
-      await sleep(400);
+      // Generous inter-batch pause — gives Open Food Facts room to breathe
+      // and keeps the UI snappy when the owner wants to click Stop.
+      await sleep(1500);
     }
 
     setRunning(false);

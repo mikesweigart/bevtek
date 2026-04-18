@@ -394,8 +394,13 @@ export async function enrichFullAction(
     none: 0,
   };
 
-  for (const core of items) {
-    const outcome = await enrichProduct(supabase, core);
+  // Per-item throttle — Open Food Facts is a free community service.
+  // 600ms between items keeps us at <2 req/s to their API even when
+  // we're running both UPC + name-search passes. Takes ~6s/batch of 10
+  // on top of actual processing time, still well within the 60s budget.
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0) await sleep(600);
+    const outcome = await enrichProduct(supabase, items[i]);
     tallies[outcome.confidence]++;
   }
 

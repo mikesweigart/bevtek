@@ -23,7 +23,7 @@ import {
   type ProductCore,
 } from "./types";
 import { scoreConfidence } from "./confidence";
-import { lookupByUpc } from "./providers/upcLookup";
+import { lookupByUpc, searchByName } from "./providers/upcLookup";
 import { getCachedImage, setCachedImage } from "./providers/imageCache";
 import { getTastingNotes } from "./providers/tastingNotes";
 
@@ -63,6 +63,7 @@ export async function enrichProduct(
   let externalDesc: string | null = null;
 
   if (!acc.image_url || !externalDesc) {
+    // Pass 1a: UPC lookup (fastest, most reliable when UPC is present).
     const off = await lookupByUpc(core);
     externalDesc = off.description;
 
@@ -80,6 +81,23 @@ export async function enrichProduct(
           "open_food_facts",
         );
       }
+    }
+  }
+
+  // Pass 1b: name + brand search — catches rows without UPCs and rows
+  // whose UPC isn't in OFF. Runs only when pass 1a didn't find an image,
+  // so UPC-equipped catalogs skip this entirely.
+  if (!acc.image_url) {
+    const byName = await searchByName(core);
+    if (byName.image_url) {
+      acc = mergePartial(acc, {
+        image_url: byName.image_url,
+        image_source: "open_food_facts",
+      });
+    }
+    // Opportunistically capture a description if pass 1a missed one too.
+    if (!externalDesc && byName.description) {
+      externalDesc = byName.description;
     }
   }
 
