@@ -61,7 +61,7 @@ export async function getTastingNotes(
 
   try {
     const res = await claude.messages.create({
-      model: "claude-3-5-haiku-latest",
+      model: "claude-haiku-4-5",
       max_tokens: 400,
       temperature: 0.3,
       messages: [{ role: "user", content: prompt }],

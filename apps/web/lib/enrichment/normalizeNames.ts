@@ -56,7 +56,7 @@ export async function normalizeNamesBatch(
 
   try {
     const res = await claude.messages.create({
-      model: "claude-3-5-haiku-latest",
+      model: "claude-haiku-4-5",
       max_tokens: 2000,
       temperature: 0,
       messages: [{ role: "user", content: prompt }],

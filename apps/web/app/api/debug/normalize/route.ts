@@ -78,7 +78,7 @@ export async function GET() {
   let rawHaikuError: string | null = null;
   try {
     const res = await claude!.messages.create({
-      model: "claude-3-5-haiku-latest",
+      model: "claude-haiku-4-5",
       max_tokens: 1000,
       temperature: 0,
       messages: [
