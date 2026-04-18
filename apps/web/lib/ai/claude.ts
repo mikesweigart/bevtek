@@ -15,7 +15,11 @@ import Anthropic from "@anthropic-ai/sdk";
 // ---------------------------------------------------------------------------
 export const PROMPT_VERSIONS = {
   megan: "megan@1.0.0",
-  gabby: "gabby@1.1.0", // v1.1 added [FEATURED]/[SPONSORED] + responsibility rules
+  // v1.2: prompt caching on the static personality block (massive
+  // rate-limit headroom — cached reads are a separate bucket on
+  // Anthropic's side), sharpened "concrete ask → recommend first" rule
+  // to fix over-clarifying behavior surfaced by the eval.
+  gabby: "gabby@1.2.0",
   moduleGen: "module-gen@1.0.0",
 } as const;
 
@@ -33,6 +37,10 @@ export type ClaudeCallLog = {
   latency_ms: number;
   input_tokens: number | null;
   output_tokens: number | null;
+  // Prompt-cache accounting (Anthropic ephemeral cache). Non-null only
+  // for features that pass the array form of `system` with cache_control.
+  cache_read_tokens?: number | null;
+  cache_creation_tokens?: number | null;
   ok: boolean;
   error_class?: string | null;
 };
@@ -129,9 +137,15 @@ function formatInventoryBlock(inventory: InventoryForAI[]): string {
         line += ` — ★${i.review_score.toFixed(1)} (${i.review_count.toLocaleString()} on ${i.review_source})`;
       }
       // Flavor / pairing notes — the single biggest lever for Gabby
-      // giving specific recommendations instead of generic ones.
-      const notes = i.summary_for_customer ?? i.tasting_notes;
-      if (notes) line += `\n    · ${notes}`;
+      // giving specific recommendations instead of generic ones. Cap
+      // at 200 chars so paragraph-length summaries don't blow the
+      // input-token budget when we pack 10 products into context.
+      const notesRaw = i.summary_for_customer ?? i.tasting_notes;
+      if (notesRaw) {
+        const notes =
+          notesRaw.length > 200 ? `${notesRaw.slice(0, 197).trimEnd()}…` : notesRaw;
+        line += `\n    · ${notes}`;
+      }
       return line;
     })
     .join("\n");
@@ -320,7 +334,15 @@ FEATURED-BOOST RULES:
 - For items marked [FEATURED] (the store's own pick), no disclosure needed — just say "one of our featured bottles" or "a staff favorite this month".`
     : "";
 
-  const systemPrompt = `You are Gabby, the AI beverage concierge at ${opts.storeName}. You're talking DIRECTLY to a customer (not store staff). Be warm, welcoming, and genuinely excited to help them find exactly what they want.
+  // Split the system prompt into a STATIC block (identical across every
+  // store, every request — perfect cache key) and a DYNAMIC block (store
+  // name + current inventory + active promotions). Anthropic's prompt
+  // caching lets the static half live in a 5-minute server-side cache
+  // and — critically — cache reads draw from a separate, much higher
+  // rate-limit bucket. At ~30 requests/min across 5 stores, cache hit
+  // rate should be >80% once warm, which directly unblocks the 30k
+  // input-tokens/min ceiling we hit during eval.
+  const staticPersonaPrompt = `You are Gabby, the AI beverage concierge at a local retail shop. You're talking DIRECTLY to a customer (not store staff). Be warm, welcoming, and genuinely excited to help them find exactly what they want.
 
 PERSONALITY:
 - Friendly and approachable, like the best bartender or shop owner you've ever met
@@ -328,26 +350,30 @@ PERSONALITY:
 - Never condescending — meet people where they are
 - Enthusiastic about beverages without being pretentious
 
-CONVERSATION APPROACH:
-For BROAD requests ("recommend a wine", "I need a gift", "what pairs with chicken"), ask ONE quick follow-up to narrow it down:
+CONVERSATION APPROACH — "concrete ask → recommend first":
+If the customer names a specific category, varietal, style, pairing, or occasion ("what pairs with salmon", "I love bold reds", "best tequila for margaritas", "spicy thai curry tonight"), LEAD WITH A RECOMMENDATION from inventory. You may add ONE light follow-up at the end ("want something richer?"), but don't open with a clarifying question — they've told you enough to start.
+
+Only open with a clarifying question when the ask is genuinely vague ("what do you have?", "recommend something", "I need a gift"). Then pick ONE:
 - "What's the occasion?" or "Who's it for?"
-- "Budget range — everyday or something special?"
+- "Budget — everyday or something special?"
 - "Red, white, or surprise me?"
 - "Sipping it neat, on the rocks, or mixing?"
 
-For SPECIFIC requests ("Pinot Noir under $30", "peaty Scotch"), go straight to recommendations.
-
 WHEN RECOMMENDING:
-- Pick 1-2 specific products FROM OUR STOCK below
+- Pick 1-2 specific products FROM THE INVENTORY the user prompt provides
 - Include the price
 - One-sentence "why this is perfect for you" — if the product has tasting notes or a customer summary (the indented "·" line under it), lean on those real flavor descriptors and pairing cues; they come from the producer/retailer, not from your imagination.
 - When a product shows a community score (the "★4.3 (1,843 on vivino)" bit), mention it casually — "shoppers on Vivino give it 4.3 stars" — it's a trust cue customers respond to.
 - Tell them where to find it: "It's on the left wall, second shelf" or "Ask any staff member and they'll grab it for you"
 
-STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):
-${inventoryContext}${featuredSection}
+FEATURED-BOOST RULES (when inventory block includes FEATURED & SPONSORED section):
+- When a customer's request genuinely fits one of the featured items, mention it FIRST before other inventory matches.
+- Never force a featured item into a conversation it doesn't fit — honesty beats a boost. If nothing on the featured list suits them, recommend from regular inventory.
+- For items marked [SPONSORED] (national partner promos), disclose naturally in the same sentence — e.g. "one of our featured partner picks this month" or "a sponsored pick from our supplier". This is non-negotiable; the customer must know it's a paid placement.
+- For items marked [FEATURED] (the store's own pick), no disclosure needed — just say "one of our featured bottles" or "a staff favorite this month".
 
 RULES:
+- ONLY recommend from the inventory list the user prompt provides — if nothing fits, be honest and suggest they ask staff
 - Keep replies short: 2-4 sentences MAX
 - Feel human and warm, not robotic
 - One follow-up question at a time
@@ -365,19 +391,37 @@ FORMATTING (VERY IMPORTANT — your replies are read aloud by a text-to-speech v
 - Just warm, flowing sentences a human would say out loud
 
 RESPONSIBILITY:
-- When you actually recommend a specific bottle, close with a light, human responsibility cue — "enjoy it responsibly" or "sip it slow, and have fun" — just once, in a natural tone. Never preachy, never on every reply. On casual small-talk turns where no recommendation is made, skip it entirely.`;
+- When you actually recommend a specific bottle, close with a light, human responsibility cue — "enjoy it responsibly" or "sip it slow, and have fun" — just once, in a natural tone. Never preachy, never on every reply. On casual small-talk turns where no recommendation is made, skip it entirely.
+- If the customer indicates they are underage, intoxicated, or asking for medical advice about alcohol, decline warmly and redirect (to staff, a doctor, or a non-alcoholic alternative).`;
+
+  const dynamicStorePrompt = `CURRENT STORE CONTEXT — you are at ${opts.storeName}.
+
+STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):
+${inventoryContext}${featuredSection}`;
 
   const startedAt = Date.now();
   let ok = false;
   let errorClass: string | null = null;
   let inputTokens: number | null = null;
   let outputTokens: number | null = null;
+  let cacheReadTokens: number | null = null;
+  let cacheCreationTokens: number | null = null;
   let raw = "";
   try {
     const message = await claude.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 300,
-      system: systemPrompt,
+      // Array form of `system` is required to attach cache_control to
+      // individual blocks. The static block gets cached; the dynamic
+      // store/inventory block is re-sent fresh every request.
+      system: [
+        {
+          type: "text",
+          text: staticPersonaPrompt,
+          cache_control: { type: "ephemeral" },
+        },
+        { type: "text", text: dynamicStorePrompt },
+      ],
       messages: opts.messages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -385,6 +429,20 @@ RESPONSIBILITY:
     });
     inputTokens = message.usage?.input_tokens ?? null;
     outputTokens = message.usage?.output_tokens ?? null;
+    // Cache accounting — `cache_creation_input_tokens` is the cold-write
+    // cost (~1.25× normal input), `cache_read_input_tokens` is the warm-hit
+    // cost (~0.1× normal input AND a separate rate-limit bucket). We log
+    // both so we can see cache hit rate per prompt version.
+    const usage = message.usage as
+      | {
+          input_tokens?: number;
+          output_tokens?: number;
+          cache_creation_input_tokens?: number;
+          cache_read_input_tokens?: number;
+        }
+      | undefined;
+    cacheReadTokens = usage?.cache_read_input_tokens ?? null;
+    cacheCreationTokens = usage?.cache_creation_input_tokens ?? null;
     ok = true;
     const textBlock = message.content.find((b) => b.type === "text");
     raw = textBlock?.text ?? "Let me think about that, could you tell me a bit more?";
@@ -408,6 +466,8 @@ RESPONSIBILITY:
       latency_ms: Date.now() - startedAt,
       input_tokens: inputTokens,
       output_tokens: outputTokens,
+      cache_read_tokens: cacheReadTokens,
+      cache_creation_tokens: cacheCreationTokens,
       ok,
       error_class: errorClass,
     });

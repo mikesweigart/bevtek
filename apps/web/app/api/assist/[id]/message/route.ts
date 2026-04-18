@@ -135,13 +135,15 @@ export async function POST(
     const { data } = await baseQuery()
       .or(clauses)
       .order("stock_qty", { ascending: false })
-      .limit(12);
+      .limit(10);
     products = (data ?? []) as Product[];
   }
+  // Cap fallback at 10 items to match /api/gabby/chat — same rate-limit
+  // math applies on the handed-off customer path.
   if (products.length === 0) {
     const { data } = await baseQuery()
       .order("stock_qty", { ascending: false })
-      .limit(20);
+      .limit(10);
     products = (data ?? []) as Product[];
   }
 

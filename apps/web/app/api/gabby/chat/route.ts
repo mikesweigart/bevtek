@@ -141,17 +141,22 @@ export async function POST(req: Request) {
     const { data } = await baseQuery()
       .or(clauses)
       .order("stock_qty", { ascending: false })
-      .limit(12);
+      .limit(10);
     products = (data ?? []) as Product[];
   }
 
   // Fallback: if keyword search matched nothing (or no keywords at all),
   // give Gabby a baseline of the store's top-stocked items so she can
   // still recommend real products with real prices.
+  //
+  // Cap at 10 items (down from 20): with notes-per-item and 5 stores of
+  // concurrent traffic we were nearing the 30k input-tokens/min ceiling.
+  // Empirically 10 is enough for Gabby to find a sensible match on the
+  // no-keyword turns without draining the rate-limit bucket.
   if (products.length === 0) {
     const { data } = await baseQuery()
       .order("stock_qty", { ascending: false })
-      .limit(20);
+      .limit(10);
     products = (data ?? []) as Product[];
   }
 
