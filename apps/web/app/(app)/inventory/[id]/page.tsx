@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { ProductImage } from "@/components/ProductImage";
 import { adjustStockAction, deleteItemAction } from "../item-actions";
 import { reenrichSingleAction } from "../actions";
+import { FeatureProductButton } from "./FeatureProductButton";
+import { endPromotionAction } from "@/app/(app)/promotions/actions";
 
 type Item = {
   id: string;
@@ -55,6 +57,23 @@ export default async function ItemDetailPage({
 
   if (!item) notFound();
 
+  // Is this product currently featured? One query — RLS scopes to the
+  // owner's store automatically. We surface it as a gold strip above
+  // the main info block when present.
+  const { data: activePromo } = await supabase
+    .from("promotions")
+    .select("id, title, tagline, ends_at")
+    .eq("inventory_id", id)
+    .eq("kind", "store")
+    .eq("status", "active")
+    .gte("ends_at", new Date().toISOString())
+    .order("ends_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const promo = activePromo as
+    | { id: string; title: string; tagline: string | null; ends_at: string }
+    | null;
+
   return (
     <div className="space-y-6 max-w-3xl">
       <Link
@@ -63,6 +82,30 @@ export default async function ItemDetailPage({
       >
         ← Inventory
       </Link>
+
+      {promo && (
+        <div className="rounded-lg border border-[color:var(--color-gold)] bg-[color:var(--color-gold)]/10 px-4 py-3 flex items-center justify-between gap-3">
+          <div className="text-sm">
+            <p className="font-semibold text-[color:var(--color-fg)]">
+              ★ Featured: {promo.title}
+            </p>
+            <p className="text-xs text-[color:var(--color-muted)]">
+              Ends {new Date(promo.ends_at).toLocaleDateString()}
+            </p>
+          </div>
+          {isManager && (
+            <form action={endPromotionAction}>
+              <input type="hidden" name="id" value={promo.id} />
+              <button
+                type="submit"
+                className="text-xs text-red-600 hover:underline"
+              >
+                End early
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6 items-start">
         <div className="space-y-2">
@@ -93,6 +136,19 @@ export default async function ItemDetailPage({
                 ↻ Re-enrich
               </button>
             </form>
+          )}
+
+          {isManager && (
+            <FeatureProductButton
+              inventoryId={item.id}
+              defaultTitle={promo?.title ?? item.name}
+              defaultTagline={
+                promo?.tagline ??
+                item.summary_for_customer ??
+                item.tasting_notes
+              }
+              currentlyFeatured={!!promo}
+            />
           )}
         </div>
 

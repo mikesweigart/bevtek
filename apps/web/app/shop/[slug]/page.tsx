@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ShopperChat } from "./ShopperChat";
 import { ProductGrid } from "./ProductGrid";
+import { AgeGate } from "./AgeGate";
+import { hasConfirmedAge } from "./age-actions";
+import { FeaturedRow, type FeaturedItem } from "./FeaturedRow";
 
 // Customer-facing storefront at /shop/[slug]
 // Example: /shop/grapes-and-grains
@@ -43,6 +46,20 @@ export default async function ShopperPage({
 
   const store = storeData as Store | null;
   if (!store) notFound();
+
+  // Compliance: 21+ confirmation must happen before we render any product
+  // imagery or pricing. Once confirmed, the cookie persists 30 days so
+  // returning shoppers aren't re-prompted every visit.
+  if (!(await hasConfirmedAge())) {
+    return <AgeGate storeName={store.name} />;
+  }
+
+  // Featured row (store + national promos merged, with inventory joined).
+  const { data: featuredData } = await supabase.rpc(
+    "active_promotions_for_store",
+    { p_store_id: store.id },
+  );
+  const featured = (featuredData as FeaturedItem[] | null) ?? [];
 
   // Fetch featured inventory — top-stock items in each major category
   const { data: productData } = await supabase
@@ -101,6 +118,8 @@ export default async function ShopperPage({
               shelves below.
             </p>
           </div>
+
+          <FeaturedRow items={featured} storeSlug={store.slug} />
 
           <ProductGrid products={products} storeSlug={store.slug} />
         </section>
