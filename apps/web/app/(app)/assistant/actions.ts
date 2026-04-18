@@ -18,6 +18,9 @@ export type ChatState = {
     stock_qty: number;
     tasting_notes: string | null;
     summary_for_customer: string | null;
+    review_score: number | null;
+    review_count: number | null;
+    review_source: string | null;
   }>;
 };
 
@@ -77,7 +80,7 @@ export async function sendMessageAction(
         const { data: enriched } = await supabase
           .from("inventory")
           .select(
-            "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+            "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer, review_score, review_count, review_source",
           )
           .in("id", ids);
         // Preserve the fuzzy-ranking order that the RPC returned.
@@ -101,7 +104,7 @@ export async function sendMessageAction(
       const { data } = await supabase
         .from("inventory")
         .select(
-          "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+          "id, name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer, review_score, review_count, review_source",
         )
         .or(clauses)
         .eq("is_active", true)

@@ -30,9 +30,10 @@ import { lookupWikipedia } from "./providers/wikipediaLookup";
 import { lookupProducerSite } from "./providers/producerSite";
 import { lookupRetailSite } from "./providers/retailLookup";
 import { lookupGoogleSearch } from "./providers/googleSearch";
+import { getReviews } from "./providers/reviews";
 
 /** Bumped whenever the pipeline changes — drives the backfill rerun gate. */
-export const ENRICHMENT_VERSION = 4;
+export const ENRICHMENT_VERSION = 5;
 
 /** Public URL of the "image coming soon" fallback served from /public. */
 const PLACEHOLDER_IMAGE_URL = "/bottle-coming-soon.svg";
@@ -215,10 +216,22 @@ export async function enrichProduct(
     });
   }
 
-  // ---------- Pass 3: reviews (stubbed) ----------
-  // Real Vivino/Untappd/Distiller integrations plug in here. For now
-  // we leave all review_* fields null — Gabby treats them as bonus,
-  // not required.
+  // ---------- Pass 3: reviews ----------
+  // Category-routed lookup against Vivino (wine), Untappd (beer/cider),
+  // or Distiller (spirits). Silent no-op for RTDs/mixers/non-alc (no
+  // consensus review source). Uses the shared Google CSE key — one
+  // lookup per row, capped at ~$0.005 each. Failure modes all return
+  // nulls, so the rest of the row writes cleanly even when reviews
+  // whiff (which they will for long-tail/private-label SKUs).
+  const reviews = await getReviews(core);
+  if (reviews.score != null) {
+    acc = mergePartial(acc, {
+      review_score: reviews.score,
+      review_count: reviews.count,
+      review_source: reviews.source,
+      review_url: reviews.url,
+    });
+  }
 
   // ---------- Persist ----------
   const confidence = scoreConfidence(acc);
@@ -226,6 +239,10 @@ export async function enrichProduct(
     image_url: acc.image_url,
     tasting_notes: acc.tasting_notes,
     summary_for_customer: acc.summary_for_customer,
+    review_score: acc.review_score,
+    review_count: acc.review_count,
+    review_source: acc.review_source,
+    review_url: acc.review_url,
     source_confidence: confidence,
     enriched_at: new Date().toISOString(),
     enrichment_version: ENRICHMENT_VERSION,

@@ -17,6 +17,10 @@ type Item = {
   category: string | null;
   subcategory: string | null;
   category_group: string | null;
+  review_score: number | null;
+  review_count: number | null;
+  review_source: string | null;
+  review_url: string | null;
   size_ml: number | null;
   size_label: string | null;
   abv: number | null;
@@ -54,7 +58,7 @@ export default async function ItemDetailPage({
   const { data: item } = (await supabase
     .from("inventory")
     .select(
-      "id, sku, name, brand, varietal, category, subcategory, category_group, size_ml, size_label, abv, price, cost, stock_qty, description, tasting_notes, summary_for_customer, source_confidence, image_url, image_source, enriched_at, is_active",
+      "id, sku, name, brand, varietal, category, subcategory, category_group, size_ml, size_label, abv, price, cost, stock_qty, description, tasting_notes, summary_for_customer, source_confidence, image_url, image_source, enriched_at, is_active, review_score, review_count, review_source, review_url",
     )
     .eq("id", id)
     .maybeSingle()) as { data: Item | null };
@@ -191,6 +195,33 @@ export default async function ItemDetailPage({
               </Link>
             )}
           </div>
+
+          {item.review_score != null && item.review_source && (
+            <div className="flex items-center gap-3 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-soft,#f7f3eb)] px-3 py-2">
+              <span className="text-lg font-bold text-[color:var(--color-gold)]">
+                ★ {Number(item.review_score).toFixed(1)}
+              </span>
+              <div className="text-xs text-[color:var(--color-muted)] flex-1">
+                <div>
+                  <strong className="text-[color:var(--color-fg)]">
+                    {item.review_count?.toLocaleString() ?? "—"}
+                  </strong>{" "}
+                  reviews on{" "}
+                  <span className="capitalize">{item.review_source}</span>
+                </div>
+                {item.review_url && (
+                  <a
+                    href={item.review_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-[color:var(--color-gold)] hover:underline"
+                  >
+                    Read reviews →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <Field label="Price" value={item.price != null ? `$${Number(item.price).toFixed(2)}` : "—"} />

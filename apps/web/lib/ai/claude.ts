@@ -38,6 +38,10 @@ export type InventoryForAI = {
   stock_qty: number;
   tasting_notes?: string | null;
   summary_for_customer?: string | null;
+  /** Community review data from Vivino/Untappd/Distiller (Pass 3). */
+  review_score?: number | null;
+  review_count?: number | null;
+  review_source?: string | null;
 };
 
 /**
@@ -60,6 +64,16 @@ function formatInventoryBlock(inventory: InventoryForAI[]): string {
       const stock =
         i.stock_qty <= 3 ? `only ${i.stock_qty} left` : `${i.stock_qty} in stock`;
       let line = `- ${parts.join(" ")} — ${price} — ${stock}`;
+      // Community review score — citeable trust signal. We only include
+      // it when reviews are populated; sources we scrape (vivino/untappd/
+      // distiller) are all named so Gabby can attribute correctly.
+      if (
+        i.review_score != null &&
+        i.review_count != null &&
+        i.review_source
+      ) {
+        line += ` — ★${i.review_score.toFixed(1)} (${i.review_count.toLocaleString()} on ${i.review_source})`;
+      }
       // Flavor / pairing notes — the single biggest lever for Gabby
       // giving specific recommendations instead of generic ones.
       const notes = i.summary_for_customer ?? i.tasting_notes;
@@ -111,6 +125,7 @@ AFTER getting enough context (usually after 1-2 follow-ups), give a SPECIFIC rec
 - Name 1-2 products FROM THE STORE INVENTORY below
 - Include the price
 - Explain WHY it fits in one sentence — if the product has tasting notes or a customer summary (the indented "·" line under it), USE those exact flavor descriptors and pairing cues instead of generic style advice. They're pulled from real producer copy.
+- Cite the community review score when present (the "★4.3 (1,843 on vivino)" bit). Real shoppers' ratings are a stronger trust signal than expert copy — "this one's 4.3 stars on Vivino with 1,800+ reviews" beats generic pitch talk.
 - Be decisive — "I'd go with..." not "you could try..."
 
 WHAT YOU KNOW:
@@ -243,6 +258,7 @@ WHEN RECOMMENDING:
 - Pick 1-2 specific products FROM OUR STOCK below
 - Include the price
 - One-sentence "why this is perfect for you" — if the product has tasting notes or a customer summary (the indented "·" line under it), lean on those real flavor descriptors and pairing cues; they come from the producer/retailer, not from your imagination.
+- When a product shows a community score (the "★4.3 (1,843 on vivino)" bit), mention it casually — "shoppers on Vivino give it 4.3 stars" — it's a trust cue customers respond to.
 - Tell them where to find it: "It's on the left wall, second shelf" or "Ask any staff member and they'll grab it for you"
 
 STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):

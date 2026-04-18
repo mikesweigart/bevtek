@@ -36,6 +36,12 @@ export type EnrichmentResult = {
   review_count: number | null;
   review_summary: string | null;
   review_source: ReviewSource | null;
+
+  // Pass 3 (review score scrape). Kept separate from average_rating so a
+  // future in-store rating (staff pick / receipt survey) can live in
+  // average_rating without colliding with external community scores.
+  review_score: number | null;
+  review_url: string | null;
 };
 
 export type ImageSource =
@@ -81,6 +87,8 @@ export function emptyResult(): EnrichmentResult {
     review_count: null,
     review_summary: null,
     review_source: null,
+    review_score: null,
+    review_url: null,
   };
 }
 

@@ -93,6 +93,9 @@ export async function POST(req: Request) {
     stock_qty: number;
     tasting_notes: string | null;
     summary_for_customer: string | null;
+    review_score: number | null;
+    review_count: number | null;
+    review_source: string | null;
   };
   let products: Product[] = [];
 
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
     supabase
       .from("inventory")
       .select(
-        "name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+        "name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer, review_score, review_count, review_source",
       )
       .eq("store_id", storeId)
       .gt("stock_qty", 0);

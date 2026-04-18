@@ -68,6 +68,9 @@ export async function askShopper(
     stock_qty: number;
     tasting_notes: string | null;
     summary_for_customer: string | null;
+    review_score: number | null;
+    review_count: number | null;
+    review_source: string | null;
   }> = [];
 
   if (searchTerms.length > 0) {
@@ -83,7 +86,7 @@ export async function askShopper(
     const { data } = await supabase
       .from("inventory")
       .select(
-        "name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer",
+        "name, brand, varietal, category, price, stock_qty, tasting_notes, summary_for_customer, review_score, review_count, review_source",
       )
       .eq("store_id", storeId)
       .eq("is_active", true)

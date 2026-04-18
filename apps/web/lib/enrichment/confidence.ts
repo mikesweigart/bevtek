@@ -32,18 +32,29 @@ export function scoreConfidence(r: EnrichmentResult): SourceConfidence {
   const notesTier = notesTier_(r.tasting_notes_source);
 
   // Both cache → verified.
-  if (imgTier === "cache" && notesTier === "cache") return "verified";
-  // Both structured provider hits → high.
-  if (imgTier === "provider" && notesTier === "provider") return "high";
-  // One provider + one fallback → medium.
-  if (
+  let tier: SourceConfidence;
+  if (imgTier === "cache" && notesTier === "cache") tier = "verified";
+  else if (imgTier === "provider" && notesTier === "provider") tier = "high";
+  else if (
     (imgTier === "provider" && notesTier === "fallback") ||
     (imgTier === "fallback" && notesTier === "provider")
   ) {
-    return "medium";
+    tier = "medium";
+  } else {
+    tier = "low";
   }
-  // Everything else (both fallback, or generated notes) → low.
-  return "low";
+
+  // Review-score bump. A real community rating from Vivino/Untappd/
+  // Distiller is stronger trust-ground than any scraped image or
+  // distilled description — so if we have one, bump one tier. Caps at
+  // verified (cache + cache was already there).
+  if (r.review_score != null && r.review_count != null && r.review_count >= 25) {
+    if (tier === "medium") tier = "high";
+    else if (tier === "low") tier = "medium";
+    else if (tier === "high") tier = "verified";
+  }
+
+  return tier;
 }
 
 function imageTier(s: ImageSource | null): "cache" | "provider" | "fallback" {
