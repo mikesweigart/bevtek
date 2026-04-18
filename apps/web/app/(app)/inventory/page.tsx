@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { EnrichButton } from "./EnrichButton";
 import { EnrichFullButton } from "./EnrichFullButton";
 import { NormalizeNamesButton } from "./NormalizeNamesButton";
+import { ClassifyCategoriesButton } from "./ClassifyCategoriesButton";
 import { ProductImage } from "@/components/ProductImage";
 
 type Item = {
@@ -12,6 +13,7 @@ type Item = {
   brand: string | null;
   varietal: string | null;
   category: string | null;
+  category_group: string | null;
   size_ml: number | null;
   price: number | null;
   cost: number | null;
@@ -27,9 +29,14 @@ const PAGE_SIZE = 50;
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; category?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    page?: string;
+    category?: string;
+    group?: string;
+  }>;
 }) {
-  const { q = "", page = "1", category = "" } = await searchParams;
+  const { q = "", page = "1", category = "", group = "" } = await searchParams;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const from = (pageNum - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -38,12 +45,12 @@ export default async function InventoryPage({
   let query = supabase
     .from("inventory")
     .select(
-      "id, sku, name, brand, varietal, category, size_ml, price, cost, stock_qty, image_url, image_source, source_confidence, is_active",
+      "id, sku, name, brand, varietal, category, category_group, size_ml, price, cost, stock_qty, image_url, image_source, source_confidence, is_active",
       {
         count: "exact",
       },
     )
-    .order("category", { ascending: true, nullsFirst: false })
+    .order("category_group", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true })
     .range(from, to);
 
@@ -53,7 +60,9 @@ export default async function InventoryPage({
       `name.ilike.%${trimmed}%,brand.ilike.%${trimmed}%,sku.ilike.%${trimmed}%`,
     );
   }
-  if (category) {
+  if (group) {
+    query = query.eq("category_group", group);
+  } else if (category) {
     query = query.eq("category", category);
   }
 
@@ -62,25 +71,48 @@ export default async function InventoryPage({
     count: number | null;
   };
 
-  // Pull the category index (name + count) once so we can render filter
-  // chips at the top. Cheap query: just category column, distinct via JS.
-  const { data: catRows } = await supabase
+  // Filter-chip index. Prefer `category_group` (the canonical 12-bucket
+  // grouping) once it's populated — it's a far cleaner filter surface
+  // than the raw, free-text `category` column. Fall back to raw category
+  // only if no rows have been classified yet (fresh import, no Step 1.5
+  // click yet).
+  const { data: groupRows } = await supabase
     .from("inventory")
-    .select("category")
-    .not("category", "is", null);
-  const catCounts = new Map<string, number>();
-  for (const r of (catRows ?? []) as { category: string | null }[]) {
-    if (!r.category) continue;
-    catCounts.set(r.category, (catCounts.get(r.category) ?? 0) + 1);
+    .select("category_group")
+    .not("category_group", "is", null);
+  const groupCounts = new Map<string, number>();
+  for (const r of (groupRows ?? []) as { category_group: string | null }[]) {
+    if (!r.category_group) continue;
+    groupCounts.set(
+      r.category_group,
+      (groupCounts.get(r.category_group) ?? 0) + 1,
+    );
   }
-  const categoryList = Array.from(catCounts.entries()).sort(
+  const groupList = Array.from(groupCounts.entries()).sort(
     (a, b) => b[1] - a[1],
   );
 
-  // Group items under category headings for the visual "by category" view.
+  // Raw-category fallback — used only when nothing is classified yet.
+  let categoryList: Array<[string, number]> = [];
+  if (groupList.length === 0) {
+    const { data: catRows } = await supabase
+      .from("inventory")
+      .select("category")
+      .not("category", "is", null);
+    const catCounts = new Map<string, number>();
+    for (const r of (catRows ?? []) as { category: string | null }[]) {
+      if (!r.category) continue;
+      catCounts.set(r.category, (catCounts.get(r.category) ?? 0) + 1);
+    }
+    categoryList = Array.from(catCounts.entries()).sort((a, b) => b[1] - a[1]);
+  }
+
+  // Group items for the visual "by category" view. Use category_group
+  // when present so the headings match the filter chips; fall back to
+  // raw category for unclassified rows so nothing disappears.
   const grouped = new Map<string, Item[]>();
   for (const i of items ?? []) {
-    const key = i.category || "Uncategorized";
+    const key = i.category_group || i.category || "Uncategorized";
     const arr = grouped.get(key) ?? [];
     arr.push(i);
     grouped.set(key, arr);
@@ -125,6 +157,7 @@ export default async function InventoryPage({
         {category && (
           <input type="hidden" name="category" value={category} />
         )}
+        {group && <input type="hidden" name="group" value={group} />}
         <button
           type="submit"
           className="rounded-md border border-[color:var(--color-border)] px-4 text-sm hover:border-[color:var(--color-fg)]"
@@ -133,43 +166,64 @@ export default async function InventoryPage({
         </button>
       </form>
 
-      {categoryList.length > 0 && (
+      {(groupList.length > 0 || categoryList.length > 0) && (
         <div className="flex gap-2 flex-wrap">
           <Link
             href={`/inventory${q ? `?q=${encodeURIComponent(q)}` : ""}`}
             className={`rounded-full text-xs px-3 py-1.5 border ${
-              !category
+              !category && !group
                 ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
                 : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
             }`}
           >
             All <span className="opacity-75 ml-1">{total}</span>
           </Link>
-          {categoryList.map(([cat, n]) => {
-            const params = new URLSearchParams();
-            if (q) params.set("q", q);
-            params.set("category", cat);
-            const active = category === cat;
-            return (
-              <Link
-                key={cat}
-                href={`/inventory?${params.toString()}`}
-                className={`rounded-full text-xs px-3 py-1.5 border ${
-                  active
-                    ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
-                    : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
-                }`}
-              >
-                {cat} <span className="opacity-75 ml-1">{n}</span>
-              </Link>
-            );
-          })}
+          {groupList.length > 0
+            ? groupList.map(([g, n]) => {
+                const params = new URLSearchParams();
+                if (q) params.set("q", q);
+                params.set("group", g);
+                const active = group === g;
+                return (
+                  <Link
+                    key={g}
+                    href={`/inventory?${params.toString()}`}
+                    className={`rounded-full text-xs px-3 py-1.5 border ${
+                      active
+                        ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
+                        : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+                    }`}
+                  >
+                    {g} <span className="opacity-75 ml-1">{n}</span>
+                  </Link>
+                );
+              })
+            : categoryList.map(([cat, n]) => {
+                const params = new URLSearchParams();
+                if (q) params.set("q", q);
+                params.set("category", cat);
+                const active = category === cat;
+                return (
+                  <Link
+                    key={cat}
+                    href={`/inventory?${params.toString()}`}
+                    className={`rounded-full text-xs px-3 py-1.5 border ${
+                      active
+                        ? "bg-[color:var(--color-gold)] text-white border-[color:var(--color-gold)]"
+                        : "border-[color:var(--color-border)] hover:border-[color:var(--color-fg)]"
+                    }`}
+                  >
+                    {cat} <span className="opacity-75 ml-1">{n}</span>
+                  </Link>
+                );
+              })}
         </div>
       )}
 
       {total > 0 && (
         <div className="flex flex-col gap-3">
           <NormalizeNamesButton />
+          <ClassifyCategoriesButton />
           <EnrichFullButton />
           <EnrichButton />
         </div>
@@ -284,7 +338,7 @@ export default async function InventoryPage({
               <div className="flex gap-2">
                 {pageNum > 1 && (
                   <Link
-                    href={`/inventory?${new URLSearchParams({ q, category, page: String(pageNum - 1) })}`}
+                    href={`/inventory?${new URLSearchParams({ q, category, group, page: String(pageNum - 1) })}`}
                     className="rounded-md border border-[color:var(--color-border)] px-3 py-1.5 hover:border-[color:var(--color-fg)]"
                   >
                     Previous

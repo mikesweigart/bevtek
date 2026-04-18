@@ -140,8 +140,25 @@ export async function commitImportAction(
   const storeId = (profile as { store_id?: string } | null)?.store_id;
   if (!storeId) return { error: "No store on profile.", inserted: null };
 
-  // Attach store_id, strip empty sku so the unique constraint doesn't conflict.
-  const payload = rows.map((r) => ({ ...r, store_id: storeId }));
+  // Attach store_id, and classify each row into one of the 12 canonical
+  // buckets on the way in so filter chips + promo targeting work as soon
+  // as the import lands — no extra "Step 1.5" click required for fresh
+  // data. (Existing unclassified rows still need the manual button run
+  // once after the migration is applied.)
+  const { classifyCategoryGroup } = await import(
+    "@/lib/inventory/categoryGroup"
+  );
+  const payload = rows.map((r) => ({
+    ...r,
+    store_id: storeId,
+    category_group: classifyCategoryGroup({
+      name: r.name,
+      brand: r.brand ?? null,
+      varietal: null,
+      category: r.category ?? null,
+      subcategory: null,
+    }),
+  }));
 
   // Chunk to stay under request size limits.
   const CHUNK = 500;
@@ -526,6 +543,126 @@ export async function enrichFullAction(
     processed: items.length,
     byConfidence: tallies,
     remaining: remaining ?? 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Category-group classification — sort every row into one of the canonical
+// 12 buckets (Beer & Cider, RTDs & Hard Seltzers, Whiskey, Vodka, Rum,
+// Tequila, Gin, Liqueurs, Wine, Non-Alcoholic, Cigars, General Non-Food)
+// so the owner gets clean filter chips and national promos can target the
+// right inventory. Runs deterministic rule-based classifier — no AI call,
+// no rate limits, so we can chew through thousands of rows per batch.
+// ---------------------------------------------------------------------------
+
+export type ClassifyCategoriesState = {
+  error: string | null;
+  processed: number | null;
+  remaining: number | null;
+  byGroup: Record<string, number> | null;
+};
+
+// Pure CPU + one bulk update per batch — 1000 rows is safe under Vercel's
+// 60s budget with plenty of margin.
+const MAX_CLASSIFY_PER_RUN = 1000;
+
+export async function classifyCategoriesAction(
+  _prev: ClassifyCategoriesState,
+): Promise<ClassifyCategoriesState> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return {
+      error: "Not authenticated.",
+      processed: null,
+      remaining: null,
+      byGroup: null,
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("store_id, role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const p = profile as { store_id?: string; role?: string } | null;
+  if (!p?.store_id) {
+    return { error: "No store.", processed: null, remaining: null, byGroup: null };
+  }
+  if (p.role !== "owner" && p.role !== "manager") {
+    return {
+      error: "Only owners or managers can categorize.",
+      processed: null,
+      remaining: null,
+      byGroup: null,
+    };
+  }
+
+  const { data: items } = (await supabase
+    .from("inventory")
+    .select("id, name, brand, varietal, category, subcategory")
+    .eq("store_id", p.store_id)
+    .is("category_group", null)
+    .limit(MAX_CLASSIFY_PER_RUN)) as {
+    data: Array<{
+      id: string;
+      name: string;
+      brand: string | null;
+      varietal: string | null;
+      category: string | null;
+      subcategory: string | null;
+    }> | null;
+  };
+
+  if (!items || items.length === 0) {
+    return { error: null, processed: 0, remaining: 0, byGroup: {} };
+  }
+
+  const { classifyCategoryGroup } = await import(
+    "@/lib/inventory/categoryGroup"
+  );
+
+  // Bucket-by-bucket update: one UPDATE per group with an `id IN (...)`
+  // filter beats 1000 single-row updates by a wide margin.
+  const buckets = new Map<string, string[]>();
+  for (const item of items) {
+    const group = classifyCategoryGroup(item);
+    if (!group) continue;
+    const arr = buckets.get(group) ?? [];
+    arr.push(item.id);
+    buckets.set(group, arr);
+  }
+
+  const byGroup: Record<string, number> = {};
+  for (const [group, ids] of buckets.entries()) {
+    const { error } = await supabase
+      .from("inventory")
+      .update({ category_group: group })
+      .in("id", ids);
+    if (error) {
+      return {
+        error: error.message,
+        processed: null,
+        remaining: null,
+        byGroup: null,
+      };
+    }
+    byGroup[group] = ids.length;
+  }
+
+  const { count: remaining } = await supabase
+    .from("inventory")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", p.store_id)
+    .is("category_group", null);
+
+  revalidatePath("/inventory");
+
+  return {
+    error: null,
+    processed: items.length,
+    remaining: remaining ?? 0,
+    byGroup,
   };
 }
 

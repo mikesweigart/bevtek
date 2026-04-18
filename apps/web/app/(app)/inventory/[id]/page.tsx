@@ -16,6 +16,7 @@ type Item = {
   varietal: string | null;
   category: string | null;
   subcategory: string | null;
+  category_group: string | null;
   size_ml: number | null;
   size_label: string | null;
   abv: number | null;
@@ -53,7 +54,7 @@ export default async function ItemDetailPage({
   const { data: item } = (await supabase
     .from("inventory")
     .select(
-      "id, sku, name, brand, varietal, category, subcategory, size_ml, size_label, abv, price, cost, stock_qty, description, tasting_notes, summary_for_customer, source_confidence, image_url, image_source, enriched_at, is_active",
+      "id, sku, name, brand, varietal, category, subcategory, category_group, size_ml, size_label, abv, price, cost, stock_qty, description, tasting_notes, summary_for_customer, source_confidence, image_url, image_source, enriched_at, is_active",
     )
     .eq("id", id)
     .maybeSingle()) as { data: Item | null };
@@ -194,6 +195,10 @@ export default async function ItemDetailPage({
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <Field label="Price" value={item.price != null ? `$${Number(item.price).toFixed(2)}` : "—"} />
             <Field label="Cost" value={item.cost != null ? `$${Number(item.cost).toFixed(2)}` : "—"} />
+            <Field
+              label="Group"
+              value={item.category_group ?? "— (not yet sorted)"}
+            />
             <Field label="Category" value={item.category ?? "—"} />
             <Field label="Varietal" value={item.varietal ?? "—"} />
             <Field label="Subcategory" value={item.subcategory ?? "—"} />
