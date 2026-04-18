@@ -29,9 +29,10 @@ import { getTastingNotes } from "./providers/tastingNotes";
 import { lookupWikipedia } from "./providers/wikipediaLookup";
 import { lookupProducerSite } from "./providers/producerSite";
 import { lookupRetailSite } from "./providers/retailLookup";
+import { lookupGoogleSearch } from "./providers/googleSearch";
 
 /** Bumped whenever the pipeline changes — drives the backfill rerun gate. */
-export const ENRICHMENT_VERSION = 3;
+export const ENRICHMENT_VERSION = 4;
 
 /** Public URL of the "image coming soon" fallback served from /public. */
 const PLACEHOLDER_IMAGE_URL = "/bottle-coming-soon.svg";
@@ -148,12 +149,30 @@ export async function enrichProduct(
     }
   }
 
-  // Pass 1e: Specialist retailers (Total Wine, ReserveBar, Wine.com).
-  // These carry the long tail — everything that wasn't in OFF, doesn't
-  // have a Wikipedia article, and whose producer site is either hard to
-  // guess or behind heavy JS. The scraped product pages also tend to
-  // carry the richest tasting-notes copy, so we capture description even
-  // when we already have an image from an earlier pass.
+  // Pass 1e: Google Custom Search, scoped to trusted beverage retailers
+  // (Total Wine, ReserveBar, Wine.com, Drizly, Binny's, K&L, Seelbach's,
+  // Caskers). This is the reliable long-tail path — Google's crawlers
+  // have a pass on Cloudflare where our direct fetches don't, and the
+  // API response embeds og:image from Google's page cache so we often
+  // skip the product-page fetch entirely. Requires GOOGLE_API_KEY +
+  // GOOGLE_CSE_ID env vars; silent no-op if unset.
+  if (!acc.image_url || !externalDesc) {
+    const google = await lookupGoogleSearch(core);
+    if (!acc.image_url && google.image_url) {
+      acc = mergePartial(acc, {
+        image_url: google.image_url,
+        image_source: "retail_site",
+      });
+    }
+    if (!externalDesc && google.description) {
+      externalDesc = google.description;
+      externalDescSource = "retail_site";
+    }
+  }
+
+  // Pass 1f: Direct retailer scrape — last-ditch fallback when Google
+  // didn't return a usable result. Often whiffs on Cloudflare, but free
+  // and occasionally catches rows Google ranks below our cutoff.
   if (!acc.image_url || !externalDesc) {
     const retail = await lookupRetailSite(core);
     if (!acc.image_url && retail.image_url) {
