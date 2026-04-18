@@ -5,6 +5,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { adjustStockAction, deleteItemAction } from "../item-actions";
 import { reenrichSingleAction } from "../actions";
 import { FeatureProductButton } from "./FeatureProductButton";
+import { ProductImageUploader } from "./ProductImageUploader";
 import { endPromotionAction } from "@/app/(app)/promotions/actions";
 
 type Item = {
@@ -41,10 +42,12 @@ export default async function ItemDetailPage({
   const { data: auth } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, store_id")
     .eq("id", auth.user!.id)
     .maybeSingle();
-  const role = (profile as { role?: string } | null)?.role;
+  const role = (profile as { role?: string; store_id?: string } | null)?.role;
+  const storeId =
+    (profile as { role?: string; store_id?: string } | null)?.store_id ?? null;
   const isManager = role === "owner" || role === "manager";
 
   const { data: item } = (await supabase
@@ -125,6 +128,15 @@ export default async function ItemDetailPage({
               <ConfidenceBadge value={item.source_confidence} />
             </p>
           )}
+          {isManager && storeId && (
+            <ProductImageUploader
+              inventoryId={item.id}
+              storeId={storeId}
+              currentImageUrl={item.image_url}
+              isManual={item.image_source === "manual"}
+            />
+          )}
+
           {isManager && (
             <form action={reenrichSingleAction}>
               <input type="hidden" name="id" value={item.id} />

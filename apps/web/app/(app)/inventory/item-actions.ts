@@ -154,6 +154,41 @@ export async function deleteItemAction(formData: FormData) {
   redirect("/inventory");
 }
 
+/**
+ * Inline product-image override from the detail page. When an owner
+ * doesn't like the auto-enriched picture, they upload a replacement via
+ * the ImageUpload component (which puts it in the `store-media` bucket
+ * and returns the public URL); this action persists that URL and flips
+ * image_source='manual' so the enrichment pipeline won't clobber it on
+ * the next run. Pass imageUrl="" to clear the image back to default.
+ */
+export async function setProductImageAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const imageUrl = String(formData.get("image_url") ?? "").trim();
+  if (!id) return;
+  const { supabase, role } = await getContext();
+  if (role !== "owner" && role !== "manager") return;
+
+  // Empty string clears the image — pipeline will fill it back in on the
+  // next enrich run. Accept only absolute https URLs otherwise, to keep
+  // random strings out of the database.
+  let urlToStore: string | null = null;
+  let sourceToStore: string | null = null;
+  if (imageUrl) {
+    if (!/^https?:\/\//i.test(imageUrl)) return;
+    urlToStore = imageUrl;
+    sourceToStore = "manual";
+  }
+
+  await supabase
+    .from("inventory")
+    .update({ image_url: urlToStore, image_source: sourceToStore })
+    .eq("id", id);
+
+  revalidatePath("/inventory");
+  revalidatePath(`/inventory/${id}`);
+}
+
 // Quick "out of stock" / "restock" toggles used from the item detail page.
 export async function adjustStockAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
