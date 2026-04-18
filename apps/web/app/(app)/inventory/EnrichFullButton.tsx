@@ -2,65 +2,216 @@
 
 // "Prepare products for Gabby" — the owner-facing full-enrichment button.
 //
-// Calls enrichFullAction, which runs the image + tasting-notes + confidence
-// pipeline for up to 20 unenriched rows per click. Shows what happened and
-// how many rows still need attention so the owner knows whether to click
-// again.
+// Two modes:
+//   • Single batch    — one serverless call, up to 10 rows. Cheapest.
+//   • Enrich everything — loops the server action back-to-back on the
+//     client until `remaining` hits 0 (or the owner cancels). The
+//     serverless timeout is sidestepped by doing many tiny calls
+//     instead of one long one, and the owner sees running totals live.
+//
+// Cumulative tallies are kept in client state, not server state, so
+// refreshing the page resets the counter (the DB is the source of truth;
+// click again and it picks up exactly where enrichment stopped).
 
-import { useActionState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { enrichFullAction, type FullEnrichState } from "./actions";
 
-const initial: FullEnrichState = {
-  error: null,
-  processed: null,
-  byConfidence: null,
-  remaining: null,
+const INITIAL_TOTALS = {
+  processed: 0,
+  verified: 0,
+  high: 0,
+  medium: 0,
+  low: 0,
+  partial: 0,
+  none: 0,
 };
 
 export function EnrichFullButton() {
-  const [state, action, pending] = useActionState(enrichFullAction, initial);
+  const [running, setRunning] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
+  const [totals, setTotals] = useState(INITIAL_TOTALS);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const cancelRef = useRef(false);
 
-  const hasResult = state.processed !== null && !state.error;
-  const tally = state.byConfidence;
-  const gabbyReady =
-    tally != null ? tally.verified + tally.high + tally.medium + tally.low : 0;
-  const notReady = tally != null ? tally.partial + tally.none : 0;
+  // One round-trip. Returns the server's reported state so the loop
+  // can decide whether to fire again.
+  const runOnce = useCallback(async (): Promise<FullEnrichState> => {
+    // The server action expects `prevState` — we pass a fresh shape
+    // because we track cumulative totals on the client instead.
+    return enrichFullAction({
+      error: null,
+      processed: null,
+      byConfidence: null,
+      remaining: null,
+    });
+  }, []);
+
+  const runSingleBatch = useCallback(async () => {
+    setRunning(true);
+    setError(null);
+    setAutoMode(false);
+    try {
+      const s = await runOnce();
+      if (s.error) {
+        setError(s.error);
+      } else if (s.byConfidence) {
+        setTotals((t) => ({
+          processed: t.processed + (s.processed ?? 0),
+          verified: t.verified + s.byConfidence!.verified,
+          high: t.high + s.byConfidence!.high,
+          medium: t.medium + s.byConfidence!.medium,
+          low: t.low + s.byConfidence!.low,
+          partial: t.partial + s.byConfidence!.partial,
+          none: t.none + s.byConfidence!.none,
+        }));
+        setRemaining(s.remaining);
+      }
+    } finally {
+      setRunning(false);
+    }
+  }, [runOnce]);
+
+  const runAuto = useCallback(async () => {
+    setRunning(true);
+    setAutoMode(true);
+    setError(null);
+    cancelRef.current = false;
+
+    // Loop until nothing left, the user cancels, or an error happens.
+    // A tiny delay between batches keeps the UI responsive and is kind
+    // to Open Food Facts' rate limits.
+    while (!cancelRef.current) {
+      const s = await runOnce();
+      if (s.error) {
+        setError(s.error);
+        break;
+      }
+      if (s.byConfidence) {
+        setTotals((t) => ({
+          processed: t.processed + (s.processed ?? 0),
+          verified: t.verified + s.byConfidence!.verified,
+          high: t.high + s.byConfidence!.high,
+          medium: t.medium + s.byConfidence!.medium,
+          low: t.low + s.byConfidence!.low,
+          partial: t.partial + s.byConfidence!.partial,
+          none: t.none + s.byConfidence!.none,
+        }));
+        setRemaining(s.remaining);
+      }
+      if ((s.processed ?? 0) === 0 || (s.remaining ?? 0) === 0) break;
+      await sleep(400);
+    }
+
+    setRunning(false);
+    setAutoMode(false);
+  }, [runOnce]);
+
+  const cancel = useCallback(() => {
+    cancelRef.current = true;
+  }, []);
+
+  const reset = useCallback(() => {
+    setTotals(INITIAL_TOTALS);
+    setRemaining(null);
+    setError(null);
+  }, []);
+
+  const gabbyReady = totals.verified + totals.high + totals.medium + totals.low;
+  const notReady = totals.partial + totals.none;
+  const anyRun = totals.processed > 0;
 
   return (
-    <form action={action} className="flex flex-wrap items-center gap-3">
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-[#C8984E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B8863C] disabled:opacity-60"
-      >
-        {pending
-          ? "Enriching (up to a minute)…"
-          : "✨ Prepare products for Gabby"}
-      </button>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={runAuto}
+          disabled={running}
+          className="rounded-md bg-[#C8984E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B8863C] disabled:opacity-60"
+        >
+          {running && autoMode
+            ? `Enriching… (${totals.processed} done${
+                remaining != null ? `, ${remaining} left` : ""
+              })`
+            : "✨ Prepare everything for Gabby"}
+        </button>
 
-      {hasResult && state.processed === 0 && (
-        <span className="text-xs text-[color:var(--color-muted)]">
-          Nothing left to enrich — your catalog is ready.
-        </span>
-      )}
+        <button
+          type="button"
+          onClick={runSingleBatch}
+          disabled={running}
+          className="rounded-md border border-[color:var(--color-border)] px-3 py-2 text-xs hover:border-[color:var(--color-fg)] disabled:opacity-60"
+        >
+          {running && !autoMode ? "Working…" : "Just one batch (10)"}
+        </button>
 
-      {hasResult && state.processed! > 0 && tally && (
-        <span className="text-xs text-[color:var(--color-muted)]">
-          Processed {state.processed}: {gabbyReady} ready for Gabby
-          {notReady > 0 && `, ${notReady} need a photo or notes`}.
-          {state.remaining != null && state.remaining > 0 && (
+        {running && autoMode && (
+          <button
+            type="button"
+            onClick={cancel}
+            className="text-xs text-red-600 underline"
+          >
+            Stop
+          </button>
+        )}
+
+        {!running && anyRun && (
+          <button
+            type="button"
+            onClick={reset}
+            className="text-xs text-[color:var(--color-muted)] underline"
+          >
+            Clear counter
+          </button>
+        )}
+      </div>
+
+      {anyRun && !error && (
+        <div className="text-xs text-[color:var(--color-muted)]">
+          <strong className="text-[color:var(--color-fg)]">
+            {gabbyReady}
+          </strong>{" "}
+          ready for Gabby
+          {notReady > 0 && (
             <>
-              {" "}
-              <strong>{state.remaining} remaining</strong> — click again to
-              continue.
+              {" · "}
+              <strong className="text-[color:var(--color-fg)]">
+                {notReady}
+              </strong>{" "}
+              need a photo or notes
             </>
           )}
-        </span>
+          {remaining != null && (
+            <>
+              {" · "}
+              <strong className="text-[color:var(--color-fg)]">
+                {remaining}
+              </strong>{" "}
+              remaining in queue
+            </>
+          )}
+          {remaining === 0 && !running && (
+            <span className="ml-2 text-green-700">
+              ✓ Your catalog is fully enriched.
+            </span>
+          )}
+        </div>
       )}
 
-      {state.error && (
-        <span className="text-xs text-red-600">{state.error}</span>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+
+      {!anyRun && !running && (
+        <p className="text-xs text-[color:var(--color-muted)]">
+          Fetches a photo and writes tasting notes for every product Gabby
+          doesn&rsquo;t know yet. Feel free to leave this tab open — large
+          catalogs can take a few minutes.
+        </p>
       )}
-    </form>
+    </div>
   );
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }

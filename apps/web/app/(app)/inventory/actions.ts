@@ -302,7 +302,10 @@ export type FullEnrichState = {
   remaining: number | null;
 };
 
-const MAX_FULL_ENRICH_PER_RUN = 20;
+// 10 per invocation keeps us under the serverless timeout even when
+// every row hits the Claude fallback (~3–5s each). The client loops
+// this action back-to-back to process larger catalogs.
+const MAX_FULL_ENRICH_PER_RUN = 10;
 
 export async function enrichFullAction(
   _prev: FullEnrichState,
