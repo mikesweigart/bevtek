@@ -34,9 +34,16 @@ export default async function InventoryPage({
     page?: string;
     category?: string;
     group?: string;
+    stock?: string;
   }>;
 }) {
-  const { q = "", page = "1", category = "", group = "" } = await searchParams;
+  const {
+    q = "",
+    page = "1",
+    category = "",
+    group = "",
+    stock = "",
+  } = await searchParams;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const from = (pageNum - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -64,6 +71,14 @@ export default async function InventoryPage({
     query = query.eq("category_group", group);
   } else if (category) {
     query = query.eq("category", category);
+  }
+  // Stock filter — drives the deep-links from the dashboard's low-stock
+  // card. "low" shows 1–2 units left (urgent but not gone); "out" shows
+  // the zero-stock shelf so owners can clean up or reorder.
+  if (stock === "low") {
+    query = query.gt("stock_qty", 0).lte("stock_qty", 2);
+  } else if (stock === "out") {
+    query = query.eq("stock_qty", 0);
   }
 
   const { data: items, count } = (await query) as {

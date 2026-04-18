@@ -80,6 +80,8 @@ export default async function DashboardPage() {
     sendblueSecret,
     recentQueries,
     recentProgress,
+    lowStock,
+    outOfStockCount,
   ] = await Promise.all([
     supabase.from("inventory").select("*", { count: "exact", head: true }),
     supabase
@@ -106,6 +108,29 @@ export default async function DashboardPage() {
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
       .limit(5),
+    // Low-stock watchlist — every active item at or below 2 units. We
+    // sort ascending so the most urgent (zero/one-left) items float to
+    // the top; owners can one-click through to the inventory row to
+    // reorder. Threshold is a constant for now; making it per-store is
+    // a future migration once owners ask for it.
+    supabase
+      .from("inventory")
+      .select("id, name, brand, stock_qty, price")
+      .eq("store_id", p.store_id)
+      .eq("is_active", true)
+      .gt("stock_qty", 0)
+      .lte("stock_qty", 2)
+      .order("stock_qty", { ascending: true })
+      .order("name", { ascending: true })
+      .limit(10),
+    // Out-of-stock count so we can show a "+N out of stock" nudge even
+    // when the top-10 low-stock list is short.
+    supabase
+      .from("inventory")
+      .select("*", { count: "exact", head: true })
+      .eq("store_id", p.store_id)
+      .eq("is_active", true)
+      .eq("stock_qty", 0),
   ]);
 
   const store = {
@@ -181,6 +206,18 @@ export default async function DashboardPage() {
   const queries = (recentQueries.data as Query[] | null) ?? [];
   const progress = (recentProgress.data as Progress[] | null) ?? [];
   const hasActivity = queries.length > 0 || progress.length > 0;
+
+  type LowStock = {
+    id: string;
+    name: string;
+    brand: string | null;
+    stock_qty: number;
+    price: number | null;
+  };
+  const lowStockItems = (lowStock.data as LowStock[] | null) ?? [];
+  const outOfStockTotal = outOfStockCount.count ?? 0;
+  const showLowStock =
+    isManager && (lowStockItems.length > 0 || outOfStockTotal > 0);
 
   return (
     <div className="space-y-10">
@@ -283,6 +320,73 @@ export default async function DashboardPage() {
               </span>
             </div>
           </div>
+        </section>
+      )}
+
+      {showLowStock && (
+        <section className="rounded-lg border border-[color:var(--color-border)] p-6 space-y-4">
+          <div className="flex items-baseline justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-sm font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
+                Low stock
+              </h2>
+              <p className="text-xs text-[color:var(--color-muted)] mt-1">
+                Items at or below 2 units{" "}
+                {outOfStockTotal > 0 && (
+                  <>
+                    ·{" "}
+                    <Link
+                      href="/inventory?stock=out"
+                      className="text-[color:var(--color-gold)] hover:underline"
+                    >
+                      {outOfStockTotal} out of stock
+                    </Link>
+                  </>
+                )}
+              </p>
+            </div>
+            <Link
+              href="/inventory?stock=low"
+              className="text-xs font-medium text-[color:var(--color-gold)] hover:underline"
+            >
+              View all →
+            </Link>
+          </div>
+          {lowStockItems.length > 0 ? (
+            <ul className="divide-y divide-[color:var(--color-border)]">
+              {lowStockItems.map((it) => (
+                <li key={it.id}>
+                  <Link
+                    href={`/inventory/${it.id}`}
+                    className="flex items-center justify-between gap-3 py-2 text-sm hover:bg-zinc-50 -mx-2 px-2 rounded"
+                  >
+                    <span className="flex-1 truncate">
+                      <span className="font-medium">{it.name}</span>
+                      {it.brand && (
+                        <span className="text-[color:var(--color-muted)]">
+                          {" "}
+                          · {it.brand}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        it.stock_qty <= 1
+                          ? "bg-red-50 text-red-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {it.stock_qty} left
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-[color:var(--color-muted)]">
+              No items under the low-stock threshold right now.
+            </p>
+          )}
         </section>
       )}
 
