@@ -56,3 +56,7 @@ Thumbs.db
 /*.txt
 /*.tsv
 /*.ai
+
+# Gabby eval runs — results are timestamped; don't commit them
+scripts/eval-results/
+

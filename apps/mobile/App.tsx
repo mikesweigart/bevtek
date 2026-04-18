@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
+import { initSentry, setSentryUser } from "./lib/sentry";
+
+// Sentry init runs at module evaluation time — earlier is better so
+// we catch errors thrown during the first render pass. DSN-gated so
+// this is a no-op when EXPO_PUBLIC_SENTRY_DSN is unset.
+initSentry();
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -202,6 +208,9 @@ export default function App() {
   useEffect(() => {
     async function hydrate(s: Session | null) {
       setSession(s);
+      // Identify the user in Sentry so crashes cluster by account.
+      // No-op when Sentry isn't configured.
+      setSentryUser(s?.user ? { id: s.user.id, email: s.user.email } : null);
       if (!s) {
         setRole(null);
         setLoading(false);
