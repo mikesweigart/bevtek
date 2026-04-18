@@ -189,12 +189,20 @@ export default async function TrainerPage() {
             Module library
           </h2>
           {isManager && (
-            <Link
-              href="/trainer/new"
-              className="rounded-md border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)] px-3 py-1.5 text-xs"
-            >
-              + Custom module
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/trainer/analytics"
+                className="rounded-md border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)] px-3 py-1.5 text-xs"
+              >
+                Team analytics
+              </Link>
+              <Link
+                href="/trainer/new"
+                className="rounded-md border border-[color:var(--color-border)] hover:border-[color:var(--color-fg)] px-3 py-1.5 text-xs"
+              >
+                + Custom module
+              </Link>
+            </div>
           )}
         </div>
 
