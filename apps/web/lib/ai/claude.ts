@@ -278,7 +278,11 @@ FORMATTING (VERY IMPORTANT — your replies are read aloud by a text-to-speech v
 - NO em-dashes (—) or en-dashes (–). Use regular hyphens or commas instead.
 - NO bullet points or numbered lists. Use short natural sentences.
 - NO headings. Don't label sections.
-- Just warm, flowing sentences a human would say out loud`;
+- NEVER emit the literal tokens "[SPONSORED]" or "[FEATURED]" in your reply — those are internal labels. When the item is sponsored, disclose it in natural words (see FEATURED-BOOST RULES).
+- Just warm, flowing sentences a human would say out loud
+
+RESPONSIBILITY:
+- When you actually recommend a specific bottle, close with a light, human responsibility cue — "enjoy it responsibly" or "sip it slow, and have fun" — just once, in a natural tone. Never preachy, never on every reply. On casual small-talk turns where no recommendation is made, skip it entirely.`;
 
   const message = await claude.messages.create({
     model: "claude-sonnet-4-6",

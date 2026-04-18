@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { TouchableOpacity, Text, StyleSheet, View } from "react-native";
 import * as Speech from "expo-speech";
 import { colors } from "../lib/theme";
+import { prepareForSpeech } from "../lib/voiceSafety";
 
 type Props = {
   text: string;
@@ -26,17 +27,10 @@ export function ListenButton({ text, title }: Props) {
 
     setPlaying(true);
 
-    // Clean up markdown-ish formatting for better speech
-    const clean = text
-      .replace(/\*\*([^*]+)\*\*/g, "$1") // remove bold markers
-      .replace(/\*([^*]+)\*/g, "$1") // remove italic markers
-      .replace(/^[-•]\s/gm, "") // remove bullet markers
-      .replace(/\n{2,}/g, ". ") // double newlines → pause
-      .replace(/\n/g, " ") // single newlines → space
-      .replace(/\$[\d,.]+/g, (match) => match.replace("$", " dollars ")) // read prices
-      .trim();
-
-    const fullText = `${title}. ${clean}`;
+    // Single source of truth for TTS prep lives in lib/voiceSafety so the
+    // responsibility cue + sponsored-scrub logic is consistent across
+    // every voice surface (Megan training modules, Gabby chat, etc.).
+    const fullText = prepareForSpeech(`${title}. ${text}`);
 
     Speech.speak(fullText, {
       language: "en-US",

@@ -15,6 +15,7 @@ import * as Speech from "expo-speech";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import GuidedFlow from "../components/GuidedFlow";
+import { prepareForSpeech } from "../lib/voiceSafety";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -64,7 +65,7 @@ export default function AskGabbyScreen() {
     // Pick a warm English voice when available. On iOS, Speech falls back
     // to the system default if no match. Language tag ensures the right
     // locale so numbers / dollar signs get read correctly.
-    Speech.speak(text, {
+    Speech.speak(prepareForSpeech(text), {
       language: "en-US",
       pitch: 1.08,
       rate: 0.96,
