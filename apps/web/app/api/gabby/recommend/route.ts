@@ -57,6 +57,10 @@ type Filters = {
   style_any?: string[];
   flavor_any?: string[];
   intended_use_any?: string[];
+  // Food-pairing cues from the dinner-pairing guided flow (e.g. "steak",
+  // "salmon", "pasta"). Folded into intended_use_any at query time — the
+  // inventory_enrichment migration stores pairings there.
+  pairing_any?: string[];
   body?: string;
   sweetness?: string;
   hop_level?: string;
@@ -110,7 +114,12 @@ async function query(
   if (typeof f.price_max === "number") q = q.lte("price", f.price_max);
   if (f.style_any?.length) q = q.overlaps("style", f.style_any);
   if (f.flavor_any?.length) q = q.overlaps("flavor_profile", f.flavor_any);
-  if (f.intended_use_any?.length) q = q.overlaps("intended_use", f.intended_use_any);
+  // Merge pairing cues into intended_use for the overlap query.
+  const useCues = [
+    ...(f.intended_use_any ?? []),
+    ...(f.pairing_any ?? []),
+  ];
+  if (useCues.length) q = q.overlaps("intended_use", useCues);
 
   const { data, error } = await q
     .order("is_staff_pick", { ascending: false, nullsFirst: false })
@@ -143,7 +152,7 @@ export async function POST(req: Request) {
     { drop: ["price_min", "price_max"], label: "budget" },
     { drop: ["body", "sweetness", "hop_level"], label: "body" },
     { drop: ["flavor_any"], label: "flavor" },
-    { drop: ["intended_use_any"], label: "occasion" },
+    { drop: ["intended_use_any", "pairing_any"], label: "occasion" },
     { drop: ["style_any"], label: "style" },
     { drop: ["subcategory"], label: "subcategory" },
   ];

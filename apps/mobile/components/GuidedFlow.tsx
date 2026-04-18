@@ -25,6 +25,7 @@ type Filters = {
   style_any?: string[];
   flavor_any?: string[];
   intended_use_any?: string[];
+  pairing_any?: string[];
   body?: string;
   sweetness?: string;
   hop_level?: string;

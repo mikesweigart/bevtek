@@ -87,10 +87,73 @@
       "subtitle": "I'll flag options that fit.",
       "category": "wine",
       "options": [
-        { "label": "Dinner pairing",  "emoji": "🍽️", "action": "recommend", "filters": { "intended_use_any": ["dinner", "pairing"] } },
+        { "label": "Dinner pairing",  "emoji": "🍽️", "next": "pairing_food", "filters": { "intended_use_any": ["dinner", "pairing"] } },
         { "label": "Gift",            "emoji": "🎁", "action": "recommend", "filters": { "intended_use_any": ["gift"] } },
         { "label": "Party / gathering","emoji": "🎉", "action": "recommend", "filters": { "intended_use_any": ["party"] } },
         { "label": "Just for me",     "emoji": "🛋️", "action": "recommend", "filters": {} }
+      ]
+    },
+
+    "pairing_food": {
+      "kind": "choice",
+      "title": "What's on the menu?",
+      "subtitle": "Pick the main dish and I'll dial it in.",
+      "category": "wine",
+      "options": [
+        { "label": "Red meat (steak, lamb, burger)", "emoji": "🥩", "next": "pairing_red_meat", "filters": { "pairing_any": ["red meat", "steak", "lamb", "beef"] } },
+        { "label": "Chicken / poultry",             "emoji": "🍗", "next": "pairing_chicken",   "filters": { "pairing_any": ["chicken", "poultry", "turkey"] } },
+        { "label": "Fish / seafood",                "emoji": "🐟", "next": "pairing_fish",      "filters": { "pairing_any": ["fish", "seafood", "salmon", "shrimp"] } },
+        { "label": "Vegetarian",                    "emoji": "🥗", "next": "pairing_veg",       "filters": { "pairing_any": ["vegetarian", "vegetable", "pasta"] } },
+        { "label": "Something else / not sure",     "emoji": "🤔", "action": "recommend",       "filters": {} }
+      ]
+    },
+
+    "pairing_red_meat": {
+      "kind": "choice",
+      "title": "How's it cooked?",
+      "subtitle": "Richer prep → bigger wine.",
+      "category": "wine",
+      "options": [
+        { "label": "Grilled / charred",          "emoji": "🔥", "action": "recommend", "filters": { "flavor_any": ["smoky", "bold", "tannic"], "body": "full" } },
+        { "label": "Roasted / braised",          "emoji": "🍲", "action": "recommend", "filters": { "flavor_any": ["earthy", "rich", "savory"], "body": "full" } },
+        { "label": "Rare / medium-rare",         "emoji": "🥩", "action": "recommend", "filters": { "flavor_any": ["bold", "tannic", "peppery"], "body": "full" } },
+        { "label": "Burger / casual",            "emoji": "🍔", "action": "recommend", "filters": { "flavor_any": ["fruity", "jammy", "easy"], "body": "medium" } }
+      ]
+    },
+
+    "pairing_chicken": {
+      "kind": "choice",
+      "title": "How's it prepared?",
+      "category": "wine",
+      "options": [
+        { "label": "Roasted / herby",            "emoji": "🌿", "action": "recommend", "filters": { "flavor_any": ["herbal", "savory", "earthy"], "body": "medium" } },
+        { "label": "Creamy / rich sauce",        "emoji": "🧈", "action": "recommend", "filters": { "flavor_any": ["oaky", "buttery", "smooth"], "body": "full" } },
+        { "label": "Grilled / BBQ",              "emoji": "🔥", "action": "recommend", "filters": { "flavor_any": ["smoky", "fruity", "bold"], "body": "medium" } },
+        { "label": "Spicy / Asian-style",        "emoji": "🌶️", "action": "recommend", "filters": { "flavor_any": ["off-dry", "floral", "fruity"], "sweetness": "off-dry" } }
+      ]
+    },
+
+    "pairing_fish": {
+      "kind": "choice",
+      "title": "What kind of fish?",
+      "category": "wine",
+      "options": [
+        { "label": "Light & flaky (cod, sole, tilapia)", "emoji": "🐟", "action": "recommend", "filters": { "flavor_any": ["crisp", "citrus", "light"], "sweetness": "dry", "body": "light" } },
+        { "label": "Rich & oily (salmon, tuna)",         "emoji": "🐠", "action": "recommend", "filters": { "flavor_any": ["oaky", "earthy", "rich"], "body": "medium" } },
+        { "label": "Shellfish (shrimp, crab, lobster)",  "emoji": "🦐", "action": "recommend", "filters": { "flavor_any": ["crisp", "mineral", "bright"], "body": "light" } },
+        { "label": "Spicy / raw (sushi, ceviche)",       "emoji": "🍣", "action": "recommend", "filters": { "flavor_any": ["floral", "off-dry", "crisp"], "sweetness": "off-dry" } }
+      ]
+    },
+
+    "pairing_veg": {
+      "kind": "choice",
+      "title": "What's the main flavor?",
+      "category": "wine",
+      "options": [
+        { "label": "Pasta / red sauce",          "emoji": "🍝", "action": "recommend", "filters": { "flavor_any": ["fruity", "bright", "medium"], "body": "medium" } },
+        { "label": "Earthy (mushrooms, roasted veg)", "emoji": "🍄", "action": "recommend", "filters": { "flavor_any": ["earthy", "savory"], "body": "medium" } },
+        { "label": "Fresh salad / light",        "emoji": "🥗", "action": "recommend", "filters": { "flavor_any": ["crisp", "citrus", "light"], "body": "light" } },
+        { "label": "Cheese-forward",             "emoji": "🧀", "action": "recommend", "filters": { "flavor_any": ["rich", "oaky", "smooth"], "body": "medium" } }
       ]
     },
 

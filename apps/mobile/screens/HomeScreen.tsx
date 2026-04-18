@@ -18,20 +18,24 @@ export default function HomeScreen() {
   const [modules, setModules] = useState<Module[]>([]);
   const [progress, setProgress] = useState<Map<string, Progress>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
+  const [store, setStore] = useState<{ name: string | null; logo_url: string | null } | null>(null);
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const [gameRes, modRes, progRes] = await Promise.all([
+    const [gameRes, modRes, progRes, storeRes] = await Promise.all([
       supabase.from("user_gamification").select("total_stars, current_streak_days").eq("id", user.id).maybeSingle(),
       supabase.from("modules").select("id, title, description, category_group, star_reward, duration_minutes").eq("is_published", true).order("category_group").order("position"),
       supabase.from("progress").select("module_id, status, stars_earned").eq("user_id", user.id),
+      supabase.from("users").select("stores(name, logo_url)").eq("id", user.id).maybeSingle(),
     ]);
     if (gameRes.data) setGame(gameRes.data);
     setModules((modRes.data as Module[]) ?? []);
     const map = new Map<string, Progress>();
     for (const p of (progRes.data as Progress[]) ?? []) map.set(p.module_id, p);
     setProgress(map);
+    const s = (storeRes.data as { stores: { name: string | null; logo_url: string | null } | null } | null)?.stores ?? null;
+    setStore(s);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -56,22 +60,12 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.gold} />}>
 
       <View style={s.header}>
-        <Text style={s.brand}>MeganTrainer</Text>
-        <Text style={s.brandSub}>POWERED BY BEVTEK.AI</Text>
-      </View>
-
-      <View style={s.levelCard}>
-        <View style={s.levelTop}>
-          <View>
-            <Text style={s.levelLabel}>Level {level.index + 1}</Text>
-            <Text style={s.levelName}>{level.name}</Text>
-          </View>
-          <View style={s.starsChip}><Text style={s.starsText}>⭐ {game.total_stars}</Text></View>
-        </View>
-        <Text style={s.levelSub}>{completedCount} module{completedCount === 1 ? "" : "s"} completed</Text>
-        {level.nextMinStars !== null && (
-          <View style={s.progressBar}><View style={[s.progressFill, { width: `${Math.round(level.progressToNext * 100)}%` }]} /></View>
+        {store?.logo_url ? (
+          <Image source={{ uri: store.logo_url }} style={s.storeLogo} resizeMode="contain" />
+        ) : (
+          <Text style={s.storeName} numberOfLines={1}>{store?.name ?? ""}</Text>
         )}
+        <Text style={s.poweredBy}>Powered by BevTek.ai</Text>
       </View>
 
       <View style={s.section}>
@@ -103,6 +97,20 @@ export default function HomeScreen() {
             );
           }}
         />
+      </View>
+
+      <View style={s.levelCard}>
+        <View style={s.levelTop}>
+          <View>
+            <Text style={s.levelLabel}>Level {level.index + 1}</Text>
+            <Text style={s.levelName}>{level.name}</Text>
+          </View>
+          <View style={s.starsChip}><Text style={s.starsText}>⭐ {game.total_stars}</Text></View>
+        </View>
+        <Text style={s.levelSub}>{completedCount} module{completedCount === 1 ? "" : "s"} completed</Text>
+        {level.nextMinStars !== null && (
+          <View style={s.progressBar}><View style={[s.progressFill, { width: `${Math.round(level.progressToNext * 100)}%` }]} /></View>
+        )}
       </View>
 
       {categoryStats.length > 0 && (
@@ -163,10 +171,11 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: 20, paddingTop: 60 },
-  header: { marginBottom: 20 },
-  brand: { fontSize: 24, fontWeight: "700", letterSpacing: -0.3 },
-  brandSub: { fontSize: 10, letterSpacing: 2, color: colors.muted, marginTop: 2 },
-  levelCard: { borderWidth: 2, borderColor: colors.gold, borderRadius: 16, padding: 18, marginBottom: 24, backgroundColor: "#FBF7F0" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
+  storeLogo: { width: 120, height: 40 },
+  storeName: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3, maxWidth: "60%" },
+  poweredBy: { fontSize: 11, letterSpacing: 1, color: colors.muted, fontWeight: "600" },
+  levelCard: { borderWidth: 2, borderColor: colors.gold, borderRadius: 16, padding: 18, marginBottom: 32, marginTop: 4, backgroundColor: "#FBF7F0" },
   levelTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   levelLabel: { fontSize: 11, letterSpacing: 1.5, color: colors.muted, textTransform: "uppercase" },
   levelName: { fontSize: 22, fontWeight: "700", marginTop: 2 },

@@ -44,9 +44,10 @@ export const CATEGORY_BADGES: Record<
   string,
   { label: string; color: string; bg: string }
 > = {
-  wine_france: { label: "WINE", color: "#92400E", bg: "#FEF3C7" },
-  wine_usa: { label: "WINE", color: "#92400E", bg: "#FEF3C7" },
-  wine_world: { label: "WINE", color: "#92400E", bg: "#FEF3C7" },
+  // Trainer DB keys kept; user-facing grouping is American / European / International.
+  wine_usa: { label: "AMERICAN", color: "#92400E", bg: "#FEF3C7" },
+  wine_france: { label: "EUROPEAN", color: "#92400E", bg: "#FEF3C7" },
+  wine_world: { label: "INTERNATIONAL", color: "#92400E", bg: "#FEF3C7" },
   spirits: { label: "SPIRITS", color: "#78350F", bg: "#FDE68A" },
   beer: { label: "BEER", color: "#3F6212", bg: "#ECFCCB" },
   cocktails: { label: "COCKTAILS", color: "#9A3412", bg: "#FFEDD5" },

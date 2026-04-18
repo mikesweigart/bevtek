@@ -45,19 +45,24 @@ export const CATEGORY_GROUPS: Record<
   string,
   { label: string; shortLabel: string; color: string }
 > = {
-  wine_france: {
-    label: "Wine — France",
-    shortLabel: "France",
+  // Key names kept for DB compatibility. Labels regrouped per product vision:
+  // American / European / International. Italian, Spanish, German, Portuguese
+  // modules live under wine_france (now "European") after the reclassification
+  // migration; wine_world now holds strictly non-European New World wines
+  // (Argentina, Chile, Australia, NZ, South Africa).
+  wine_usa: {
+    label: "American Wines",
+    shortLabel: "American",
     color: "#C8984E",
   },
-  wine_usa: {
-    label: "Wine — USA",
-    shortLabel: "USA",
+  wine_france: {
+    label: "European Wines",
+    shortLabel: "European",
     color: "#C8984E",
   },
   wine_world: {
-    label: "Wine — World",
-    shortLabel: "World",
+    label: "International Wines",
+    shortLabel: "International",
     color: "#C8984E",
   },
   spirits: { label: "Spirits", shortLabel: "Spirits", color: "#C8984E" },
@@ -77,8 +82,8 @@ export const CATEGORY_GROUPS: Record<
 };
 
 export const CATEGORY_ORDER = [
-  "wine_france",
   "wine_usa",
+  "wine_france",
   "wine_world",
   "spirits",
   "beer",
