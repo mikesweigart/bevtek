@@ -14,7 +14,6 @@ type Store = {
   id: string;
   name: string;
   slug: string;
-  address: string | null;
   phone: string | null;
 };
 
@@ -40,7 +39,7 @@ export default async function ShopperPage({
   // Fetch store by slug (public-readable)
   const { data: storeData } = await supabase
     .from("stores")
-    .select("id, name, slug, address, phone")
+    .select("id, name, slug, phone")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -85,10 +84,9 @@ export default async function ShopperPage({
             <h1 className="text-2xl font-semibold tracking-tight mt-0.5">
               {store.name}
             </h1>
-            {store.address && (
+            {store.phone && (
               <p className="text-xs text-[color:var(--color-muted)] mt-1">
-                {store.address}
-                {store.phone && ` · ${store.phone}`}
+                {store.phone}
               </p>
             )}
           </div>
