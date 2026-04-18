@@ -1,17 +1,27 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, FlatList } from "react-native";
+import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity } from "react-native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
+import ProductDetailModal, { type Product as DetailProduct } from "./ProductDetailModal";
 
 type Product = {
   id: string;
   name: string;
   brand: string | null;
+  category: string | null;
+  subcategory: string | null;
   price: number | null;
   stock_qty: number;
   image_url: string | null;
   sku: string | null;
+  description_short: string | null;
+  flavor_notes: string | null;
+  tasting_notes: string | null;
+  is_staff_pick: boolean | null;
 };
+
+const PRODUCT_SELECT =
+  "id, name, brand, category, subcategory, price, stock_qty, image_url, sku, description_short, flavor_notes, tasting_notes, is_staff_pick";
 
 type Props = {
   /** Keywords to search inventory (e.g., "bourbon", "irish whiskey") */
@@ -34,6 +44,9 @@ export function StoreProducts({
 }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  // Selected product opens the shared detail modal — the "back" button
+  // on the modal returns the trainee right to the module page.
+  const [active, setActive] = useState<Product | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,7 +62,7 @@ export function StoreProducts({
       // Primary query: active, in-stock items matching keywords
       let { data } = await supabase
         .from("inventory")
-        .select("id, name, brand, price, stock_qty, image_url, sku")
+        .select(PRODUCT_SELECT)
         .or(clauses)
         .eq("is_active", true)
         .gt("stock_qty", 0)
@@ -60,7 +73,7 @@ export function StoreProducts({
       if (!data || data.length === 0) {
         const fb = await supabase
           .from("inventory")
-          .select("id, name, brand, price, stock_qty, image_url, sku")
+          .select(PRODUCT_SELECT)
           .or(clauses)
           .eq("is_active", true)
           .order("stock_qty", { ascending: false })
@@ -72,7 +85,7 @@ export function StoreProducts({
       if (!data || data.length === 0) {
         const fb2 = await supabase
           .from("inventory")
-          .select("id, name, brand, price, stock_qty, image_url, sku")
+          .select(PRODUCT_SELECT)
           .or(clauses)
           .order("stock_qty", { ascending: false })
           .limit(limit);
@@ -108,7 +121,11 @@ export function StoreProducts({
         keyExtractor={(p) => p.id}
         contentContainerStyle={{ gap: 10 }}
         renderItem={({ item }) => (
-          <View style={s.card}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={s.card}
+            onPress={() => setActive(item)}
+          >
             {item.image_url ? (
               <Image
                 source={{ uri: item.image_url }}
@@ -145,8 +162,15 @@ export function StoreProducts({
                 {item.stock_qty} in stock
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
+      />
+
+      <ProductDetailModal
+        product={active as DetailProduct | null}
+        visible={active !== null}
+        onClose={() => setActive(null)}
+        onBackToResults={() => setActive(null)}
       />
     </View>
   );
