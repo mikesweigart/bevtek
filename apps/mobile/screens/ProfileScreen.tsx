@@ -4,11 +4,13 @@ import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { levelForStars } from "../lib/levels";
+import { ReportProblemModal } from "../components/ReportProblemModal";
 
 export default function ProfileScreen() {
   const nav = useNavigation<any>();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string; role: string } | null>(null);
   const [game, setGame] = useState<{ total_stars: number; current_streak_days: number; longest_streak_days: number } | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -61,11 +63,22 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       )}
 
+      <TouchableOpacity style={s.linkBtn} onPress={() => setReportOpen(true)}>
+        <Text style={s.linkText}>🛟  Report a problem</Text>
+        <Text style={s.linkChevron}>›</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={s.signOutBtn} onPress={async () => { const { error } = await supabase.auth.signOut(); if (error) Alert.alert("Error", error.message); }}>
         <Text style={s.signOutText}>Sign out</Text>
       </TouchableOpacity>
 
       <Text style={s.version}>BevTek.ai · Megan Trainer v1.0</Text>
+
+      <ReportProblemModal
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        context={{ screen: "Profile" }}
+      />
     </ScrollView>
   );
 }
