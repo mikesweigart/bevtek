@@ -113,12 +113,19 @@ export async function POST(req: Request) {
       .gt("stock_qty", 0);
 
   if (searchTerms.length > 0) {
+    // Include tasting_notes + summary_for_customer so flavor-profile and
+    // pairing asks ("smoky", "pairs with salmon", "light bodied") can
+    // actually match products whose names don't contain those words.
+    // Gabby's system prompt already knows to quote tasting notes; this
+    // is what gets those products INTO her context in the first place.
     const clauses = searchTerms
       .flatMap((k) => [
         `name.ilike.%${k}%`,
         `brand.ilike.%${k}%`,
         `varietal.ilike.%${k}%`,
         `category.ilike.%${k}%`,
+        `tasting_notes.ilike.%${k}%`,
+        `summary_for_customer.ilike.%${k}%`,
       ])
       .join(",");
 

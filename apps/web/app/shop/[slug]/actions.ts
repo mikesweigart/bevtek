@@ -74,12 +74,17 @@ export async function askShopper(
   }> = [];
 
   if (searchTerms.length > 0) {
+    // Flavor + pairing matches — see /api/gabby/chat for the reasoning.
+    // Searching tasting_notes and summary_for_customer surfaces the
+    // bottles whose flavor descriptors match the customer's phrasing.
     const clauses = searchTerms
       .flatMap((k) => [
         `name.ilike.%${k}%`,
         `brand.ilike.%${k}%`,
         `varietal.ilike.%${k}%`,
         `category.ilike.%${k}%`,
+        `tasting_notes.ilike.%${k}%`,
+        `summary_for_customer.ilike.%${k}%`,
       ])
       .join(",");
 

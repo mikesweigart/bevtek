@@ -114,12 +114,16 @@ export async function POST(
       .gt("stock_qty", 0);
 
   if (searchTerms.length > 0) {
+    // Match the /api/gabby/chat search so handed-off conversations see
+    // the same flavor/pairing-aware candidate set.
     const clauses = searchTerms
       .flatMap((k) => [
         `name.ilike.%${k}%`,
         `brand.ilike.%${k}%`,
         `varietal.ilike.%${k}%`,
         `category.ilike.%${k}%`,
+        `tasting_notes.ilike.%${k}%`,
+        `summary_for_customer.ilike.%${k}%`,
       ])
       .join(",");
     const { data } = await baseQuery()

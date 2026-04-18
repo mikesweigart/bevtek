@@ -5,6 +5,7 @@ import { EnrichFullButton } from "./EnrichFullButton";
 import { NormalizeNamesButton } from "./NormalizeNamesButton";
 import { ClassifyCategoriesButton } from "./ClassifyCategoriesButton";
 import { ProductImage } from "@/components/ProductImage";
+import { parseInventoryQuery } from "@/lib/inventory/searchQuery";
 
 type Item = {
   id: string;
@@ -61,17 +62,31 @@ export default async function InventoryPage({
     .order("name", { ascending: true })
     .range(from, to);
 
-  const trimmed = q.trim();
+  // Structured query parsing. Owners type natural phrases like "rum
+  // under $30 with stock > 5" — we peel the predicates off and leave
+  // the remainder as the free-text ilike. If nothing structured
+  // parses, `parsed.text` is just the original input so the legacy
+  // keyword search still works exactly as before.
+  const parsed = parseInventoryQuery(q);
+  const trimmed = parsed.text.trim();
   if (trimmed) {
     query = query.or(
-      `name.ilike.%${trimmed}%,brand.ilike.%${trimmed}%,sku.ilike.%${trimmed}%`,
+      `name.ilike.%${trimmed}%,brand.ilike.%${trimmed}%,sku.ilike.%${trimmed}%,varietal.ilike.%${trimmed}%,tasting_notes.ilike.%${trimmed}%,summary_for_customer.ilike.%${trimmed}%`,
     );
   }
+  // Parsed category group wins over the explicit ?group= only when the
+  // owner didn't click a filter chip — chips are the authoritative UI.
   if (group) {
     query = query.eq("category_group", group);
+  } else if (parsed.group) {
+    query = query.eq("category_group", parsed.group);
   } else if (category) {
     query = query.eq("category", category);
   }
+  if (parsed.priceMin != null) query = query.gte("price", parsed.priceMin);
+  if (parsed.priceMax != null) query = query.lte("price", parsed.priceMax);
+  if (parsed.stockMin != null) query = query.gte("stock_qty", parsed.stockMin);
+  if (parsed.stockMax != null) query = query.lte("stock_qty", parsed.stockMax);
   // Stock filter — drives the deep-links from the dashboard's low-stock
   // card. "low" shows 1–2 units left (urgent but not gone); "out" shows
   // the zero-stock shelf so owners can clean up or reorder.
@@ -166,7 +181,7 @@ export default async function InventoryPage({
         <input
           name="q"
           defaultValue={q}
-          placeholder="Search by name, brand, or SKU"
+          placeholder="Try: rum under $30 with stock > 5"
           className="flex-1 rounded-md border border-[color:var(--color-border)] px-3 py-2 text-sm outline-none focus:border-[color:var(--color-gold)]"
         />
         {category && (
@@ -180,6 +195,27 @@ export default async function InventoryPage({
           Search
         </button>
       </form>
+
+      {parsed.chips.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap -mt-2">
+          <span className="text-xs text-[color:var(--color-muted)]">
+            Understood as:
+          </span>
+          {parsed.chips.map((chip, i) => (
+            <span
+              key={`${chip.label}-${i}`}
+              className="rounded-full text-[11px] px-2.5 py-1 bg-[color:var(--color-gold)]/10 text-[color:var(--color-gold)] font-medium"
+            >
+              {chip.label}
+            </span>
+          ))}
+          {parsed.text.trim() && (
+            <span className="rounded-full text-[11px] px-2.5 py-1 border border-[color:var(--color-border)] text-[color:var(--color-muted)]">
+              “{parsed.text.trim()}”
+            </span>
+          )}
+        </div>
+      )}
 
       {(groupList.length > 0 || categoryList.length > 0) && (
         <div className="flex gap-2 flex-wrap">
