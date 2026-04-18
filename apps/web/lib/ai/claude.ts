@@ -154,9 +154,45 @@ RULES:
  * and Receptionist. Megan is strictly the staff Trainer persona; every
  * customer touchpoint hears "Gabby".
  */
+/**
+ * A product that's been featured (store-chosen) or sponsored (national
+ * promo). Passed separately from regular inventory so Gabby can boost it
+ * when it fits the customer's request — and disclose sponsorship when
+ * the promo is national-kind, per FTC guidance.
+ */
+export type FeaturedForAI = {
+  name: string;
+  brand: string | null;
+  varietal: string | null;
+  price: number | null;
+  stock_qty: number;
+  tagline: string | null;
+  summary: string | null;
+  kind: "store" | "national";
+};
+
+function formatFeaturedBlock(featured: FeaturedForAI[]): string {
+  if (featured.length === 0) return "";
+  const lines = featured
+    .map((f) => {
+      const parts = [f.name];
+      if (f.brand) parts.push(`(${f.brand})`);
+      if (f.varietal) parts.push(`— ${f.varietal}`);
+      const price = f.price != null ? `$${Number(f.price).toFixed(2)}` : "price N/A";
+      const label = f.kind === "national" ? "[SPONSORED]" : "[FEATURED]";
+      let line = `- ${label} ${parts.join(" ")} — ${price}`;
+      const note = f.tagline ?? f.summary;
+      if (note) line += `\n    · ${note}`;
+      return line;
+    })
+    .join("\n");
+  return lines;
+}
+
 export async function chatWithGabby(opts: {
   messages: ChatMessage[];
   inventory: InventoryForAI[];
+  featured?: FeaturedForAI[];
   storeName: string;
 }): Promise<string> {
   const claude = getAnthropic();
@@ -168,6 +204,23 @@ export async function chatWithGabby(opts: {
     opts.inventory.length > 0
       ? formatInventoryBlock(opts.inventory)
       : "No specific matches right now — recommend from general category knowledge and remind the customer to browse the shelves or ask staff for exact stock.";
+
+  // Featured/sponsored boost. When the customer's request reasonably fits
+  // one of these, Gabby mentions it first. For [SPONSORED] items she
+  // naturally discloses ("one of our featured partner picks this month")
+  // so the audio-only surfaces are FTC-honest even without a visible badge.
+  const featured = opts.featured ?? [];
+  const featuredBlock = formatFeaturedBlock(featured);
+  const featuredSection = featuredBlock
+    ? `\n\nFEATURED & SPONSORED PICKS THIS MONTH:
+${featuredBlock}
+
+FEATURED-BOOST RULES:
+- When a customer's request genuinely fits one of the items above, mention it FIRST before other inventory matches.
+- Never force a featured item into a conversation it doesn't fit — honesty beats a boost. If nothing on the featured list suits them, recommend from regular inventory.
+- For items marked [SPONSORED] (national partner promos), disclose naturally in the same sentence — e.g. "one of our featured partner picks this month" or "a sponsored pick from our supplier". This is non-negotiable; the customer must know it's a paid placement.
+- For items marked [FEATURED] (the store's own pick), no disclosure needed — just say "one of our featured bottles" or "a staff favorite this month".`
+    : "";
 
   const systemPrompt = `You are Gabby, the AI beverage concierge at ${opts.storeName}. You're talking DIRECTLY to a customer (not store staff). Be warm, welcoming, and genuinely excited to help them find exactly what they want.
 
@@ -193,7 +246,7 @@ WHEN RECOMMENDING:
 - Tell them where to find it: "It's on the left wall, second shelf" or "Ask any staff member and they'll grab it for you"
 
 STORE INVENTORY (ONLY recommend from this list — if nothing fits, be honest and suggest they ask staff):
-${inventoryContext}
+${inventoryContext}${featuredSection}
 
 RULES:
 - Keep replies short: 2-4 sentences MAX

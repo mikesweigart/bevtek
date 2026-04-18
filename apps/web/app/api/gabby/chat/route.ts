@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { chatWithGabby, isAIConfigured, type ChatMessage } from "@/lib/ai/claude";
+import { chatWithGabby, isAIConfigured, type ChatMessage, type FeaturedForAI } from "@/lib/ai/claude";
+import { fetchActivePromotions } from "@/lib/promotions/fetch";
 
 export const runtime = "nodejs";
 
@@ -135,6 +136,21 @@ export async function POST(req: Request) {
     products = (data ?? []) as Product[];
   }
 
+  // Featured/sponsored boost — fetch the store's active promos so Gabby
+  // can weave them in when they fit. Cheap single-RPC call, and the RPC
+  // already drops anything without matching in-stock inventory.
+  const promos = await fetchActivePromotions(supabase, storeId);
+  const featured: FeaturedForAI[] = promos.map((p) => ({
+    name: p.inventory_name,
+    brand: p.inventory_brand,
+    varietal: p.inventory_varietal,
+    price: p.inventory_price,
+    stock_qty: p.inventory_stock_qty,
+    tagline: p.tagline,
+    summary: p.inventory_summary,
+    kind: p.kind,
+  }));
+
   if (!isAIConfigured()) {
     return json({
       error: null,
@@ -153,6 +169,7 @@ export async function POST(req: Request) {
     const aiResponse = await chatWithGabby({
       messages,
       inventory: products,
+      featured,
       storeName: store.name,
     });
 

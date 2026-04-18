@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { chatWithGabby, isAIConfigured } from "@/lib/ai/claude";
+import { chatWithGabby, isAIConfigured, type FeaturedForAI } from "@/lib/ai/claude";
+import { fetchActivePromotions } from "@/lib/promotions/fetch";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -109,9 +110,24 @@ export async function askShopper(
   }
 
   try {
+    // Featured/sponsored boost — Gabby mentions these first when they fit
+    // the customer's ask. RPC filters to in-stock + not-opted-out already.
+    const promos = await fetchActivePromotions(supabase, storeId);
+    const featured: FeaturedForAI[] = promos.map((p) => ({
+      name: p.inventory_name,
+      brand: p.inventory_brand,
+      varietal: p.inventory_varietal,
+      price: p.inventory_price,
+      stock_qty: p.inventory_stock_qty,
+      tagline: p.tagline,
+      summary: p.inventory_summary,
+      kind: p.kind,
+    }));
+
     const aiResponse = await chatWithGabby({
       messages,
       inventory: products,
+      featured,
       storeName: store.name,
     });
 
