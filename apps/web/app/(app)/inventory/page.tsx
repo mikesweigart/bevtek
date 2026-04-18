@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { EnrichButton } from "./EnrichButton";
 import { EnrichFullButton } from "./EnrichFullButton";
+import { NormalizeNamesButton } from "./NormalizeNamesButton";
 import { ProductImage } from "@/components/ProductImage";
 
 type Item = {
@@ -165,6 +166,7 @@ export default async function InventoryPage({
 
       {total > 0 && (
         <div className="flex flex-col gap-3">
+          <NormalizeNamesButton />
           <EnrichFullButton />
           <EnrichButton />
         </div>

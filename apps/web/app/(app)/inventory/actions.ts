@@ -282,6 +282,111 @@ export async function enrichImagesAction(
 export const enrichImagesFromWikipediaAction = enrichImagesAction;
 
 // ---------------------------------------------------------------------------
+// Name normalization — CSV imports arrive as one mashed ALL-CAPS string.
+// Before enrichment can find photos/notes/reviews, we parse those names
+// into brand + varietal + size via Claude Haiku.
+// ---------------------------------------------------------------------------
+
+export type NormalizeState = {
+  error: string | null;
+  processed: number | null;
+  remaining: number | null;
+  /** How many rows got a non-null brand after this pass. */
+  parsed: number | null;
+};
+
+// Haiku is fast — we can do more rows per invocation than the enrichment
+// loop. 60 rows / ~4 Haiku calls comfortably fits under 60s.
+const MAX_NORMALIZE_PER_RUN = 60;
+
+export async function normalizeNamesAction(
+  _prev: NormalizeState,
+): Promise<NormalizeState> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return {
+      error: "Not authenticated.",
+      processed: null,
+      remaining: null,
+      parsed: null,
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("store_id, role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const p = profile as { store_id?: string; role?: string } | null;
+  if (!p?.store_id) {
+    return {
+      error: "No store.",
+      processed: null,
+      remaining: null,
+      parsed: null,
+    };
+  }
+  if (p.role !== "owner" && p.role !== "manager") {
+    return {
+      error: "Only owners or managers can normalize.",
+      processed: null,
+      remaining: null,
+      parsed: null,
+    };
+  }
+
+  // Candidates: rows still missing a brand. Idempotent by construction —
+  // once brand is populated, the row drops out of future runs.
+  const { data: items } = (await supabase
+    .from("inventory")
+    .select("id, name, category")
+    .eq("store_id", p.store_id)
+    .is("brand", null)
+    .limit(MAX_NORMALIZE_PER_RUN)) as {
+    data: Array<{ id: string; name: string; category: string | null }> | null;
+  };
+
+  if (!items || items.length === 0) {
+    return { error: null, processed: 0, remaining: 0, parsed: 0 };
+  }
+
+  const { normalizeNames } = await import("@/lib/enrichment/normalizeNames");
+  const results = await normalizeNames(items);
+
+  // Write back per-row. We only update fields that came back non-null so
+  // we never overwrite something the owner may have hand-edited.
+  let parsed = 0;
+  for (const r of results) {
+    const patch: Record<string, unknown> = {};
+    if (r.brand) patch.brand = r.brand;
+    if (r.varietal) patch.varietal = r.varietal;
+    if (r.size_label) patch.size_label = r.size_label;
+    if (Object.keys(patch).length === 0) continue;
+    const { error } = await supabase
+      .from("inventory")
+      .update(patch)
+      .eq("id", r.id);
+    if (!error && r.brand) parsed++;
+  }
+
+  const { count: remaining } = await supabase
+    .from("inventory")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", p.store_id)
+    .is("brand", null);
+
+  revalidatePath("/inventory");
+
+  return {
+    error: null,
+    processed: items.length,
+    remaining: remaining ?? 0,
+    parsed,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Full enrichment — image + tasting notes + confidence scoring.
 // Uses the new lib/enrichment pipeline (Open Food Facts → Claude fallback).
 // Processes up to MAX_FULL_ENRICH_PER_RUN unenriched rows per click so a

@@ -60,7 +60,10 @@
       "Bash(find /c/Users/Admin/Desktop/BevTek/supabase/migrations -name \"*.sql\" -exec grep -l \"hold_requests\" {} \\\\;)",
       "Bash(xargs cat *)",
       "Bash(npx tsc *)",
-      "Bash(grep -n \"mode === \\\\|</KeyboardAvoidingView>\\\\|</>\\\\|<>\\\\|</ScrollView>\\\\|ScrollView$\\\\|<ScrollView\" \"C:/Users/Admin/Desktop/BevTek/apps/mobile/screens/AskGabbyScreen.tsx\")"
+      "Bash(grep -n \"mode === \\\\|</KeyboardAvoidingView>\\\\|</>\\\\|<>\\\\|</ScrollView>\\\\|ScrollView$\\\\|<ScrollView\" \"C:/Users/Admin/Desktop/BevTek/apps/mobile/screens/AskGabbyScreen.tsx\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
