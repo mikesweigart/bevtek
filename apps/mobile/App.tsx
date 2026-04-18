@@ -8,6 +8,8 @@ import { StatusBar } from "expo-status-bar";
 import { supabase } from "./lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import { colors } from "./lib/theme";
+import { getAgeState, type AgeGateState } from "./lib/ageGate";
+import AgeGateScreen from "./screens/AgeGateScreen";
 
 // Auth
 import LoginScreen from "./screens/LoginScreen";
@@ -191,6 +193,11 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
+  const [age, setAge] = useState<AgeGateState>("unknown");
+
+  useEffect(() => {
+    getAgeState().then(setAge);
+  }, []);
 
   useEffect(() => {
     async function hydrate(s: Session | null) {
@@ -235,6 +242,20 @@ export default function App() {
   }
 
   const isEmployee = role === "owner" || role === "manager" || role === "staff";
+
+  // Age gate: employees bypass once logged in (they're on-shift staff).
+  // Everyone else — unauthed visitors and customer accounts — must pass
+  // the 21+ check before seeing any product content. Mirrors web cookie
+  // semantics (30-day TTL) via expo-secure-store.
+  const mustGate = !isEmployee && age !== "confirmed";
+  if (mustGate) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <AgeGateScreen state={age} onChange={setAge} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
