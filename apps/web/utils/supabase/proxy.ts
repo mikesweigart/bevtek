@@ -5,10 +5,17 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 // Paths reachable without a session.
+//
+// Apple App Review requires Support URL and Privacy Policy URL to be
+// publicly accessible — a redirect to /login on these triggers rejection.
+// Same courtesy for /terms since it's linked from the policy.
 const PUBLIC_PATHS = new Set([
   "/",
   "/login",
   "/signup",
+  "/support",
+  "/privacy",
+  "/terms",
   "/robots.txt",
   "/sitemap.xml",
 ]);
