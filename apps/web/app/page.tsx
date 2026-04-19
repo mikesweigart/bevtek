@@ -887,6 +887,12 @@ function Footer() {
           <Link href="/affiliates" className="hover:text-[color:var(--color-fg)]">
             Affiliate program
           </Link>
+          <Link href="/privacy" className="hover:text-[color:var(--color-fg)]">
+            Privacy
+          </Link>
+          <Link href="/terms" className="hover:text-[color:var(--color-fg)]">
+            Terms
+          </Link>
           <Link href="/login" className="hover:text-[color:var(--color-fg)]">
             Sign in
           </Link>
