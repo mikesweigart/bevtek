@@ -90,6 +90,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const client = svc();
+  // Diagnostic: report which env vars the route can actually see, without
+  // ever echoing their values. Present=true means process.env has a
+  // non-empty string. Remove this block once the setup is verified.
+  const env_present = {
+    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
   const started = Date.now();
   const results = await Promise.all([
     sweep(client, "webhook_events", "received_at", WEBHOOK_RETENTION_DAYS),
@@ -99,6 +106,7 @@ export async function GET(req: Request) {
     ok: results.every((r) => !r.error),
     ranAt: new Date().toISOString(),
     elapsed_ms: Date.now() - started,
+    env_present,
     results,
   });
 }
