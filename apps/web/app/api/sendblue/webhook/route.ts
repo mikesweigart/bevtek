@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import {
@@ -110,6 +111,10 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     const msg = (e as Error)?.message ?? "unknown";
     await markFailed("sendblue", eventId, msg);
+    Sentry.captureException(e, {
+      tags: { webhook: "sendblue", event_type: eventType },
+      extra: { event_id: eventId },
+    });
     console.error("sendblue webhook handler error:", e);
     return NextResponse.json({ error: "handler failed" }, { status: 500 });
   }

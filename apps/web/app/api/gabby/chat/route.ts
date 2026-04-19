@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { chatWithGabby, isAIConfigured, type ChatMessage, type FeaturedForAI } from "@/lib/ai/claude";
@@ -227,6 +228,12 @@ export async function POST(req: Request) {
       sessionId,
     });
   } catch (e) {
+    // Forward to Sentry so we notice production AI failures before a
+    // customer complains. Tag with storeId so we can filter per-tenant
+    // in the Sentry UI when triaging.
+    Sentry.captureException(e, {
+      tags: { route: "gabby-chat", store_id: store.id },
+    });
     return json(
       { error: `AI error: ${(e as Error).message ?? "unknown"}`, messages },
       { status: 500 },

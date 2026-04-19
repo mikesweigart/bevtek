@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { NextResponse, type NextRequest } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import {
@@ -124,6 +125,13 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     const msg = (e as Error)?.message ?? "unknown";
     await markFailed("stripe", event.id, msg);
+    Sentry.captureException(e, {
+      tags: {
+        webhook: "stripe",
+        event_type: event.type,
+      },
+      extra: { event_id: event.id },
+    });
     // Return 500 so Stripe retries — the ledger row stays unhandled.
     console.error("Stripe webhook handler error:", e);
     return NextResponse.json({ error: "handler failed" }, { status: 500 });
