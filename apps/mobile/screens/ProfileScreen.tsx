@@ -17,6 +17,53 @@ export default function ProfileScreen() {
   const [game, setGame] = useState<{ total_stars: number; current_streak_days: number; longest_streak_days: number } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // GDPR Art. 20 / CCPA right-to-know. Hits /api/account/export, which
+  // returns a JSON attachment with every row we have for this user.
+  // On mobile we can't "save" a file directly, so we copy the JSON text
+  // into an Alert with a "Share" handoff to the OS share sheet.
+  async function runExport() {
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert("Not signed in", "Sign in again and retry.");
+        return;
+      }
+      const res = await fetch(`${WEB_ORIGIN}/api/account/export`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        Alert.alert(
+          "Couldn't export",
+          (body as { error?: string }).error ?? "Try again in a moment.",
+        );
+        return;
+      }
+      const json = await res.text();
+      // Hand off to the OS share sheet so the shopper can save to Files,
+      // email it to themselves, or drop it in a notes app. Dynamic import
+      // so we don't pull the Share API on screens that never need it.
+      const { Share } = await import("react-native");
+      await Share.share({
+        message: json,
+        title: "BevTek account export",
+      });
+    } catch (e) {
+      Alert.alert(
+        "Couldn't export",
+        e instanceof Error ? e.message : "Try again in a moment.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // Account deletion — required by Apple App Store Review Guideline 5.1.1(v)
   // for any app that supports signup. Uses a two-alert flow so the shopper
@@ -158,6 +205,17 @@ export default function ProfileScreen() {
 
       <TouchableOpacity style={s.linkBtn} onPress={() => Linking.openURL(`${WEB_ORIGIN}/support`)}>
         <Text style={s.linkText}>❓  Help &amp; support</Text>
+        <Text style={s.linkChevron}>›</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[s.linkBtn, exporting && { opacity: 0.6 }]}
+        onPress={runExport}
+        disabled={exporting}
+      >
+        <Text style={s.linkText}>
+          {exporting ? "📤  Preparing export…" : "📤  Download my data"}
+        </Text>
         <Text style={s.linkChevron}>›</Text>
       </TouchableOpacity>
 
