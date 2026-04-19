@@ -1,16 +1,104 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Linking } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { levelForStars } from "../lib/levels";
 import { ReportProblemModal } from "../components/ReportProblemModal";
 
+// Same origin as the rest of the web app. Exposed via EXPO_PUBLIC_ so the
+// bundler can inline it; falls back to the production host if unset.
+const WEB_ORIGIN =
+  process.env.EXPO_PUBLIC_WEB_ORIGIN ?? "https://bevtek-web.vercel.app";
+
 export default function ProfileScreen() {
   const nav = useNavigation<any>();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string; role: string } | null>(null);
   const [game, setGame] = useState<{ total_stars: number; current_streak_days: number; longest_streak_days: number } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Account deletion — required by Apple App Store Review Guideline 5.1.1(v)
+  // for any app that supports signup. Uses a two-alert flow so the shopper
+  // has to explicitly type-free-confirm the destructive action, then hits
+  // /api/account/delete on the web backend which calls auth.admin.deleteUser
+  // (cascades through public.users to every user-owned row).
+  async function confirmDeleteAccount() {
+    Alert.alert(
+      "Delete your BevTek account?",
+      "This permanently erases your saved picks, holds, Trainer progress, and sign-in. It can't be undone. Your purchase history at individual stores (if any) is kept by those stores as required by law.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Are you sure?",
+              "Tap Delete once more to permanently erase your account.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => { void runDelete(); },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  }
+
+  async function runDelete() {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert("Not signed in", "Sign in again and retry.");
+        return;
+      }
+      const res = await fetch(`${WEB_ORIGIN}/api/account/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        Alert.alert(
+          "Couldn't delete account",
+          (body as { error?: string }).error ??
+            "Something went wrong. Email support@bevtek.ai and we'll finish this by hand.",
+          [
+            {
+              text: "Email support",
+              onPress: () => Linking.openURL("mailto:support@bevtek.ai?subject=Account%20deletion"),
+            },
+            { text: "OK" },
+          ],
+        );
+        return;
+      }
+      // Sign out locally so the session token and any cached profile state
+      // are wiped before the Alert dismisses — prevents a flash of authed
+      // UI while the user navigates away.
+      await supabase.auth.signOut();
+      Alert.alert(
+        "Account deleted",
+        "Your BevTek account and all associated data have been permanently removed.",
+      );
+    } catch (e) {
+      Alert.alert(
+        "Couldn't delete account",
+        e instanceof Error ? e.message : "Try again in a moment.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -68,8 +156,25 @@ export default function ProfileScreen() {
         <Text style={s.linkChevron}>›</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={s.linkBtn} onPress={() => Linking.openURL(`${WEB_ORIGIN}/support`)}>
+        <Text style={s.linkText}>❓  Help &amp; support</Text>
+        <Text style={s.linkChevron}>›</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={s.signOutBtn} onPress={async () => { const { error } = await supabase.auth.signOut(); if (error) Alert.alert("Error", error.message); }}>
         <Text style={s.signOutText}>Sign out</Text>
+      </TouchableOpacity>
+
+      {/* Account deletion — Apple Guideline 5.1.1(v). Destructive styling so
+          the shopper can't miss the weight of the action. */}
+      <TouchableOpacity
+        style={[s.deleteBtn, deleting && { opacity: 0.6 }]}
+        onPress={confirmDeleteAccount}
+        disabled={deleting}
+      >
+        <Text style={s.deleteText}>
+          {deleting ? "Deleting…" : "Delete account"}
+        </Text>
       </TouchableOpacity>
 
       <Text style={s.version}>BevTek.ai · Megan Trainer v1.0</Text>
@@ -103,7 +208,9 @@ const s = StyleSheet.create({
   linkBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12 },
   linkText: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.fg },
   linkChevron: { fontSize: 24, color: colors.muted, fontWeight: "300" },
-  signOutBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 24, marginTop: 12 },
+  signOutBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 12, marginTop: 12 },
   signOutText: { fontSize: 15, color: colors.muted },
+  deleteBtn: { borderWidth: 1, borderColor: "#B91C1C", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginBottom: 24 },
+  deleteText: { fontSize: 14, color: "#B91C1C", fontWeight: "600" },
   version: { textAlign: "center", fontSize: 11, color: colors.muted, marginBottom: 32 },
 });
