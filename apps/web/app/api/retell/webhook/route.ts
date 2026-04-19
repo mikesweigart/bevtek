@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import {
+  checkAndClaim,
+  markFailed,
+  markHandled,
+} from "@/lib/webhooks/idempotency";
 
 // Retell AI posts call lifecycle events here.
 // Retell docs: https://docs.retellai.com/api-references/webhook
@@ -62,31 +67,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "missing call.call_id" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("webhook_log_call", {
-    p_secret: secret,
-    p_retell_call_id: call.call_id,
-    p_from_number: call.from_number ?? null,
-    p_to_number: call.to_number ?? null,
-    p_direction: "inbound",
-    p_status: call.call_status ?? body.event ?? null,
-    p_duration_sec: call.duration_ms
-      ? Math.round(call.duration_ms / 1000)
-      : null,
-    p_transcript: call.transcript ?? null,
-    p_summary: call.call_summary ?? null,
-    p_recording_url: call.recording_url ?? null,
-    p_metadata: { event: body.event ?? null },
-    p_started_at: toIso(call.start_timestamp),
-    p_ended_at: toIso(call.end_timestamp),
+  // Idempotency: Retell can redeliver the same event (call_started,
+  // call_ended, call_analyzed) on timeout/retry. Dedupe by
+  // (event, call_id) so we don't double-insert transcripts or summaries.
+  const eventType = body.event ?? "unknown";
+  const eventId = `${eventType}:${call.call_id}`;
+  const claim = await checkAndClaim({
+    provider: "retell",
+    eventId,
+    eventType,
   });
-
-  if (error) {
-    console.error("retell webhook error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (claim === "duplicate") {
+    return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  return NextResponse.json({ ok: true, call_log_id: data });
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.rpc("webhook_log_call", {
+      p_secret: secret,
+      p_retell_call_id: call.call_id,
+      p_from_number: call.from_number ?? null,
+      p_to_number: call.to_number ?? null,
+      p_direction: "inbound",
+      p_status: call.call_status ?? body.event ?? null,
+      p_duration_sec: call.duration_ms
+        ? Math.round(call.duration_ms / 1000)
+        : null,
+      p_transcript: call.transcript ?? null,
+      p_summary: call.call_summary ?? null,
+      p_recording_url: call.recording_url ?? null,
+      p_metadata: { event: body.event ?? null },
+      p_started_at: toIso(call.start_timestamp),
+      p_ended_at: toIso(call.end_timestamp),
+    });
+
+    if (error) {
+      await markFailed("retell", eventId, error.message);
+      console.error("retell webhook error:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    await markHandled("retell", eventId);
+    return NextResponse.json({ ok: true, call_log_id: data });
+  } catch (e) {
+    const msg = (e as Error)?.message ?? "unknown";
+    await markFailed("retell", eventId, msg);
+    console.error("retell webhook handler error:", e);
+    return NextResponse.json({ error: "handler failed" }, { status: 500 });
+  }
 }
 
 // Retell pings with GET for health check
