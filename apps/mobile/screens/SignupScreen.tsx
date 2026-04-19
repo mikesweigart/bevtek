@@ -38,7 +38,10 @@ export default function SignupScreen() {
       <View style={s.inner}>
         <Text style={s.brand}>BevTek<Text style={{ color: colors.gold }}>.ai</Text></Text>
         <Text style={s.heading}>Create your account</Text>
-        <Text style={s.sub}>Start your BevTek store in minutes.</Text>
+        <Text style={s.sub}>
+          Sign up to save your picks, track holds, and chat with Gabby at
+          your local store.
+        </Text>
         <TextInput style={s.input} placeholder="Email" autoCapitalize="none" keyboardType="email-address" autoComplete="email" value={email} onChangeText={setEmail} placeholderTextColor={colors.muted} />
         <TextInput style={s.input} placeholder="Password (8+ characters)" secureTextEntry autoComplete="new-password" value={password} onChangeText={setPassword} placeholderTextColor={colors.muted} />
         <TouchableOpacity style={[s.button, loading && s.disabled]} onPress={signUp} disabled={loading}>

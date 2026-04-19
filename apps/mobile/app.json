@@ -13,7 +13,12 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "ai.bevtek.app"
+      "bundleIdentifier": "ai.bevtek.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationCategoryType": "public.app-category.food-and-drink"
+      }
     },
     "android": {
       "adaptiveIcon": {

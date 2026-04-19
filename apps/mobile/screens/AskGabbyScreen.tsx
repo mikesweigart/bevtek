@@ -184,7 +184,18 @@ export default function AskGabbyScreen() {
           <Text style={styles.avatarText}>G</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>Gabby</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>Gabby</Text>
+            {/*
+             * Explicit AI badge. Apple App Review (since late 2024) asks
+             * generative-AI apps to clearly disclose AI in-UI so shoppers
+             * know responses are machine-generated. A small pill next to
+             * the persona name does this without crowding the header.
+             */}
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>AI</Text>
+            </View>
+          </View>
           <Text style={styles.tagline}>Find it, Pair it, Love it!</Text>
           <Text style={styles.sub}>
             {loadError
@@ -238,10 +249,19 @@ export default function AskGabbyScreen() {
             </View>
             <Text style={styles.emptyHello}>Hi, I&apos;m Gabby 👋</Text>
             <Text style={styles.emptyIntro}>
-              Your personal beverage concierge
+              Your AI beverage concierge
               {storeName ? ` at ${storeName}` : ""}. Ask me anything — pairings,
               gift ideas, what&apos;s new on the shelf, or a cocktail to try tonight.
               I&apos;ll always pick from what&apos;s in stock.
+            </Text>
+            {/*
+             * Plain-language AI disclosure. Shown only on the empty state
+             * so we don't nag returning shoppers, but visible at first
+             * contact — which is what Apple review looks for.
+             */}
+            <Text style={styles.emptyDisclosure}>
+              Gabby is AI-powered. Responses are generated, so double-check
+              anything important before you act on it.
             </Text>
             <TouchableOpacity
               style={styles.guidedCta}
@@ -364,6 +384,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { color: "#fff", fontWeight: "700" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  aiBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    backgroundColor: colors.gold,
+  },
+  aiBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  emptyDisclosure: {
+    fontSize: 11,
+    color: colors.muted,
+    textAlign: "center",
+    paddingHorizontal: 24,
+    lineHeight: 16,
+    marginTop: -8,
+    marginBottom: 18,
+    fontStyle: "italic",
+  },
   handoffBtn: {
     flexDirection: "row",
     alignItems: "center",
