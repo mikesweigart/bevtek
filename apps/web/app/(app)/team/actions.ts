@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { sendInviteEmail } from "@/lib/email/sendInvite";
+import { logAudit } from "@/lib/audit/log";
 
 export type InviteState = {
   error: string | null;
@@ -73,6 +74,16 @@ export async function createInviteAction(
     console.error("invite email failed:", sendResult.error);
   }
 
+  await logAudit({
+    action: "team.invite.create",
+    actor: auth.user
+      ? { id: auth.user.id, email: auth.user.email ?? null }
+      : null,
+    storeId: (row?.store_id as string | undefined) ?? null,
+    target: { type: "invite", id: (row?.id as string | undefined) ?? email },
+    metadata: { invited_email: email, role, email_sent: sendResult.ok },
+  });
+
   revalidatePath("/team");
   return {
     error: null,
@@ -86,6 +97,14 @@ export async function revokeInviteAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
   await supabase.from("invites").delete().eq("id", id);
+  await logAudit({
+    action: "team.invite.revoke",
+    actor: auth.user
+      ? { id: auth.user.id, email: auth.user.email ?? null }
+      : null,
+    target: { type: "invite", id },
+  });
   revalidatePath("/team");
 }

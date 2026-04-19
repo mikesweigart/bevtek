@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { logAudit } from "@/lib/audit/log";
 import { createClient } from "@/utils/supabase/server";
 
 type Status = "open" | "in_progress" | "resolved" | "wont_fix" | "duplicate";
@@ -36,11 +37,30 @@ export async function updateTicketStatus(
     patch.resolved_at = null;
   }
 
+  // Read prior status so the audit row records the transition, not
+  // just the destination.
+  const { data: prior } = await supabase
+    .from("support_tickets")
+    .select("status, store_id")
+    .eq("id", ticketId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("support_tickets")
     .update(patch)
     .eq("id", ticketId);
   if (error) return { error: error.message };
+
+  await logAudit({
+    action: "support.ticket.status_update",
+    actor: { id: auth.user.id, email: auth.user.email ?? null },
+    storeId: (prior?.store_id as string | undefined) ?? null,
+    target: { type: "ticket", id: ticketId },
+    metadata: {
+      from: (prior?.status as string | undefined) ?? null,
+      to: next,
+    },
+  });
 
   revalidatePath("/support");
   return {};

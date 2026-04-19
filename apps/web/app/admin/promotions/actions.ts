@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { isBevTekAdmin } from "@/lib/auth/isAdmin";
+import { logAudit } from "@/lib/audit/log";
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,7 +41,7 @@ export async function createNationalPromotionAction(
   _prev: CreateNationalState,
   formData: FormData,
 ): Promise<CreateNationalState> {
-  const { ok } = await gate();
+  const { ok, email } = await gate();
   if (!ok) return { error: "Not authorized.", id: null };
 
   const title = String(formData.get("title") ?? "").trim();
@@ -103,6 +104,21 @@ export async function createNationalPromotionAction(
   if (error) return { error: error.message, id: null };
   const created = data as { id: string };
 
+  await logAudit({
+    action: "promo.national.create",
+    actor: { email },
+    target: { type: "promotion", id: created.id },
+    metadata: {
+      title,
+      has_brand: !!brand,
+      has_category: !!category,
+      has_upc: !!upc,
+      days,
+      priority,
+      store_revenue_share_pct: revenueSharePct,
+    },
+  });
+
   revalidatePath("/admin/promotions");
   return { error: null, id: created.id };
 }
@@ -110,7 +126,7 @@ export async function createNationalPromotionAction(
 export async function endNationalPromotionAction(
   formData: FormData,
 ): Promise<void> {
-  const { ok } = await gate();
+  const { ok, email } = await gate();
   if (!ok) return;
   const id = String(formData.get("id") ?? "").trim();
   if (!id) return;
@@ -125,5 +141,12 @@ export async function endNationalPromotionAction(
     })
     .eq("id", id)
     .eq("kind", "national");
+
+  await logAudit({
+    action: "promo.national.end",
+    actor: { email },
+    target: { type: "promotion", id },
+  });
+
   revalidatePath("/admin/promotions");
 }

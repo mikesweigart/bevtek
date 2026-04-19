@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { logAudit } from "@/lib/audit/log";
 
 export type SettingsState = { error: string | null; saved: boolean };
 
@@ -83,6 +84,22 @@ export async function updateStoreSettingsAction(
 
   if (error) return { error: error.message, saved: false };
 
+  await logAudit({
+    action: "store.settings.update",
+    actor: { id: auth.user.id, email: auth.user.email ?? null },
+    storeId: p.store_id,
+    target: { type: "store", id: p.store_id },
+    metadata: {
+      fields: {
+        name: true,
+        slug: !!slug,
+        phone: true,
+        timezone: true,
+        logo_url: true,
+      },
+    },
+  });
+
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   return { error: null, saved: true };
@@ -123,6 +140,12 @@ export async function deleteStoreAction() {
   if (!p?.store_id || p.role !== "owner") return;
 
   await supabase.from("stores").delete().eq("id", p.store_id);
+  await logAudit({
+    action: "store.delete",
+    actor: { id: auth.user.id, email: auth.user.email ?? null },
+    storeId: p.store_id,
+    target: { type: "store", id: p.store_id },
+  });
   await supabase.auth.signOut();
   redirect("/");
 }
