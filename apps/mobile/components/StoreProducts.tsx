@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity } from "react
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import ProductDetailModal, { type Product as DetailProduct } from "./ProductDetailModal";
+import { resolveProductImageUri } from "../lib/images";
 
 type Product = {
   id: string;
@@ -126,19 +127,27 @@ export function StoreProducts({
             style={s.card}
             onPress={() => setActive(item)}
           >
-            {item.image_url ? (
-              <Image
-                source={{ uri: item.image_url }}
-                style={s.productImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={[s.productImage, s.imagePlaceholder]}>
-                <Text style={s.placeholderText}>
-                  {(item.brand ?? item.name).slice(0, 2).toUpperCase()}
-                </Text>
-              </View>
-            )}
+            {(() => {
+              const uri = resolveProductImageUri(item.image_url);
+              if (uri) {
+                return (
+                  <Image
+                    source={{ uri }}
+                    style={s.productImage}
+                    resizeMode="contain"
+                    accessible
+                    accessibilityLabel={`${item.brand ?? ""} ${item.name}`.trim()}
+                  />
+                );
+              }
+              return (
+                <View style={[s.productImage, s.imagePlaceholder]}>
+                  <Text style={s.placeholderText}>
+                    {(item.brand ?? item.name).slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+              );
+            })()}
             {item.brand && (
               <Text style={s.brand} numberOfLines={1}>
                 {item.brand}

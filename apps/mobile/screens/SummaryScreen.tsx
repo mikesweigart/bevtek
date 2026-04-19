@@ -28,6 +28,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { resolveProductImageUri } from "../lib/images";
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { foundStore, type FoundItem } from "../lib/foundStore";
@@ -385,14 +386,19 @@ export default function SummaryScreen() {
             {found.map((f) => (
               <View key={f.id} style={styles.foundRow}>
                 <View style={styles.thumbWrap}>
-                  {f.image_url ? (
-                    <Image
-                      source={{ uri: f.image_url }}
-                      style={styles.thumb}
-                    />
-                  ) : (
-                    <Text style={styles.thumbIcon}>🍾</Text>
-                  )}
+                  {(() => {
+                    const uri = resolveProductImageUri(f.image_url);
+                    return uri ? (
+                      <Image
+                        source={{ uri }}
+                        style={styles.thumb}
+                        accessible
+                        accessibilityLabel={f.name}
+                      />
+                    ) : (
+                      <Text style={styles.thumbIcon}>🍾</Text>
+                    );
+                  })()}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardName} numberOfLines={2}>

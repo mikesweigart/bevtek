@@ -3,6 +3,50 @@
 
 const U = "https://images.unsplash.com";
 
+// ---------------------------------------------------------------------------
+// Product image helpers
+// ---------------------------------------------------------------------------
+//
+// The server-side enrichment pipeline writes one of:
+//   - an absolute https:// URL from OFF / Wikipedia / producer site / retail
+//   - the relative sentinel "/bottle-coming-soon.svg" when nothing matched
+//   - null (for rows imported before enrichment ran)
+//
+// React Native's <Image> can't resolve relative URLs, and we don't want to
+// render a 404-ing image anyway — the nice bottle emoji + "coming soon" card
+// is strictly better UX. `resolveProductImageUri` collapses both "no image"
+// cases (null AND the relative sentinel) into a single null, and rejects
+// anything that isn't an http(s) URL (defends against malformed cache rows).
+//
+// Consumer screens can also track `onError` to flip to placeholder if a live
+// URL goes dead (link rot on Wikipedia / OFF happens) — see ProductDetailModal
+// for the canonical pattern.
+
+const PLACEHOLDER_SENTINEL = "/bottle-coming-soon.svg";
+
+export function isPlaceholderImage(url: string | null | undefined): boolean {
+  if (!url) return true;
+  // Relative sentinel written by the enrichment pipeline.
+  if (url === PLACEHOLDER_SENTINEL) return true;
+  // Guard against older rows / typos where the full URL was stored.
+  if (url.endsWith(PLACEHOLDER_SENTINEL)) return true;
+  return false;
+}
+
+/**
+ * Returns a renderable https:// URL or null. Call this in every mobile
+ * screen that displays a product photo so the "coming soon" fallback fires
+ * consistently.
+ */
+export function resolveProductImageUri(
+  url: string | null | undefined,
+): string | null {
+  if (isPlaceholderImage(url)) return null;
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) return null;
+  return url;
+}
+
 // Category hero images (used in Featured Modules carousel)
 export const CATEGORY_IMAGES: Record<string, string> = {
   wine_france: `${U}/photo-1510812431401-41d2bd2722f3?w=600&q=80`,

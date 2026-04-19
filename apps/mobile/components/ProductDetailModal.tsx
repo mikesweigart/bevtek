@@ -16,6 +16,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { colors } from "../lib/theme";
 import { foundStore } from "../lib/foundStore";
+import { resolveProductImageUri } from "../lib/images";
 
 export type Product = {
   id: string;
@@ -58,6 +59,9 @@ export default function ProductDetailModal({
   const [channel, setChannel] = useState<Channel>("sms");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  // Flip to true if the remote image 404s / times out so we can fall back
+  // to the "coming soon" card instead of a silent broken-image box.
+  const [imageBroken, setImageBroken] = useState(false);
 
   // Refresh save/cart state each time we open + prefill hold contact
   // prefs from the shopper's previous hold so repeat requests are
@@ -66,6 +70,7 @@ export default function ProductDetailModal({
     if (!product || !visible) return;
     setFound(false);
     setHoldStep("idle");
+    setImageBroken(false);
     (async () => {
       try {
         const [saveRes, cartRes, prefRes] = await Promise.all([
@@ -239,22 +244,33 @@ export default function ProductDetailModal({
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Label image */}
+          {/* Label image — resolveProductImageUri strips the relative "coming
+              soon" sentinel the enrichment pipeline writes, so we show the
+              nicer placeholder card instead of a broken Image box. */}
           <View style={styles.imageWrap}>
-            {product.image_url ? (
-              <Image
-                source={{ uri: product.image_url }}
-                style={styles.image}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text style={styles.imagePlaceholderIcon}>🍾</Text>
-                <Text style={styles.imagePlaceholderText}>
-                  Label image coming soon
-                </Text>
-              </View>
-            )}
+            {(() => {
+              const uri = resolveProductImageUri(product.image_url);
+              if (uri && !imageBroken) {
+                return (
+                  <Image
+                    source={{ uri }}
+                    style={styles.image}
+                    resizeMode="contain"
+                    accessible
+                    accessibilityLabel={`${product.brand ? product.brand + " " : ""}${product.name} label`}
+                    onError={() => setImageBroken(true)}
+                  />
+                );
+              }
+              return (
+                <View style={styles.imagePlaceholder}>
+                  <Text style={styles.imagePlaceholderIcon}>🍾</Text>
+                  <Text style={styles.imagePlaceholderText}>
+                    Label image coming soon
+                  </Text>
+                </View>
+              );
+            })()}
             {product.is_staff_pick && (
               <View style={styles.pickBadge}>
                 <Text style={styles.pickText}>★ Staff pick</Text>
