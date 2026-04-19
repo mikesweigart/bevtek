@@ -49,7 +49,9 @@ export async function POST(
   } catch {
     return json({ error: "bad json" }, { status: 400 });
   }
-  const userMessage = (body.userMessage ?? "").trim();
+  // Same caps as /api/gabby/chat: 1000 chars on the new message, trim
+  // the historical thread to the last 20 turns inside loadLiveSession.
+  const userMessage = (body.userMessage ?? "").trim().slice(0, 1000);
   if (!userMessage) return json({ error: "empty message" }, { status: 400 });
 
   const svc = getAssistServiceClient();
@@ -71,8 +73,15 @@ export async function POST(
   const store = storeRow as { id: string; name: string } | null;
   if (!store) return json({ error: "store not found" }, { status: 400 });
 
+  // Trim the replayed session history so total context stays bounded
+  // even on long-running handoffs (session TTL is 2h — plenty of room
+  // for a shopper to grow the thread beyond reason otherwise).
+  const trimmedHistory = session.messages.slice(-20).map((m) => ({
+    role: m.role,
+    content: String(m.content ?? "").slice(0, 1000),
+  }));
   const messages: AssistMessage[] = [
-    ...session.messages,
+    ...trimmedHistory,
     { role: "user", content: userMessage },
   ];
 

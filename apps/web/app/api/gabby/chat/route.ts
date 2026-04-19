@@ -48,8 +48,15 @@ export async function POST(req: Request) {
   if (!rl.success) return rateLimitResponse(rl);
 
   const storeId = body.storeId;
-  const history: ChatMessage[] = Array.isArray(body.messages) ? body.messages : [];
-  const userMessage = (body.userMessage ?? "").trim();
+  // Cap the inbound conversation so a single bad actor can't drive up
+  // Claude cost by pasting a novel. 20 turns is well past any natural
+  // shopper exchange; 1000 chars/message is generous for voice-to-text.
+  const rawHistory: ChatMessage[] = Array.isArray(body.messages) ? body.messages : [];
+  const history: ChatMessage[] = rawHistory.slice(-20).map((m) => ({
+    role: m.role,
+    content: String(m.content ?? "").slice(0, 1000),
+  }));
+  const userMessage = (body.userMessage ?? "").trim().slice(0, 1000);
 
   if (!storeId) return json({ error: "storeId required" }, { status: 400 });
   if (!userMessage) {
