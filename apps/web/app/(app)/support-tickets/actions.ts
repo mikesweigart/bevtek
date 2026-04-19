@@ -62,6 +62,6 @@ export async function updateTicketStatus(
     },
   });
 
-  revalidatePath("/support");
+  revalidatePath("/support-tickets");
   return {};
 }
