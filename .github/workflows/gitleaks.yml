@@ -1,0 +1,39 @@
+name: gitleaks
+
+# Run secret scanning on every PR and on every push to main. The job
+# fails (and the PR goes red) if gitleaks finds anything matching
+# .gitleaks.toml that isn't in the allowlist. Zero false-positive
+# tolerance on main is the whole point — a leaked Supabase service
+# role key would let anyone rewrite every store's inventory.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    name: scan for secrets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so PR scans cover every commit in the branch,
+          # not just the tip. Without this, a secret that got added and
+          # then "removed" earlier in the branch still rides in via
+          # reflog and slips past the scan.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # Redact findings in log output so we don't echo the very
+          # secret we're trying to protect.
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"

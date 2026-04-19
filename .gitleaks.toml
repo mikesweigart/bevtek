@@ -1,0 +1,75 @@
+# Gitleaks config for BevTek.
+#
+# Runs in CI (.github/workflows/gitleaks.yml) on every pull request and
+# on pushes to main. Also invokable locally with:
+#   gitleaks detect --config .gitleaks.toml --redact
+#
+# We extend the default gitleaks ruleset (which covers AWS, Stripe,
+# Anthropic, OpenAI, GitHub tokens, private keys, etc.) and add an
+# allowlist for the handful of false positives this repo genuinely
+# produces. If a new provider ships us a key format the default rules
+# don't catch, add a [[rules]] block below.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe paths and patterns"
+
+paths = [
+  # Lockfiles contain hex hashes that trip hex-token rules. No secrets
+  # live here; pnpm/package-lock are machine-generated.
+  '''pnpm-lock\.yaml''',
+  '''package-lock\.json''',
+  '''yarn\.lock''',
+
+  # Generated Supabase types — no secrets, but long base64-ish strings.
+  '''supabase/types\.ts''',
+
+  # Eval fixtures contain simulated customer prompts, including prompt
+  # injection payloads that can look like instructions.
+  '''scripts/eval-fixtures/.*\.json''',
+
+  # Build output and dependencies.
+  '''node_modules/''',
+  '''\.next/''',
+  '''dist/''',
+  '''build/''',
+]
+
+regexes = [
+  # NEXT_PUBLIC_SUPABASE_ANON_KEY is, by design, a publishable JWT that
+  # ships to the browser. Gitleaks sees "eyJ..." and flags it as a JWT
+  # secret. Supabase's anon key is safe to commit only in .env.example
+  # style placeholders — our real one stays in Vercel env vars — but
+  # we do reference the *name* of the var in docs and code.
+  '''NEXT_PUBLIC_SUPABASE_ANON_KEY''',
+
+  # Public Stripe keys (pk_test_ / pk_live_) are by design client-side.
+  # We never commit the real ones, but docs reference the prefixes.
+  '''pk_test_[A-Za-z0-9]{8,}''',
+]
+
+# Custom rule: flag any accidental paste of a Supabase SERVICE ROLE
+# key. Default rules don't target this format specifically, but it's
+# the most catastrophic leak for this codebase (bypasses all RLS).
+[[rules]]
+id = "supabase-service-role-key"
+description = "Supabase service_role JWT (critical — bypasses RLS)"
+regex = '''eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+# Keywords narrow the scope so we don't flag every JWT in the repo;
+# we only alert when the context suggests a service-role paste.
+keywords = [
+  "service_role",
+  "SUPABASE_SERVICE_ROLE_KEY",
+]
+
+# Custom rule: Retell / Sendblue per-store webhook secrets. These are
+# random tokens we generate ourselves, so there's no fixed prefix to
+# key off — but a 32+ char random token adjacent to "RETELL_" or
+# "SENDBLUE_" is suspicious.
+[[rules]]
+id = "bevtek-provider-secret"
+description = "Retell/Sendblue webhook secret paste"
+regex = '''(?i)(retell|sendblue)[_-]?(webhook|api)?[_-]?(secret|key|token)[^\n]{0,8}['"=:\s]+['"]?[A-Za-z0-9_\-]{24,}'''
+keywords = ["retell", "sendblue"]
