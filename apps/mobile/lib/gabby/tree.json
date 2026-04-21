@@ -174,12 +174,143 @@
       "title": "Which spirit?",
       "category": "spirits",
       "options": [
-        { "label": "Whiskey / Bourbon", "emoji": "🥃", "action": "recommend", "filters": { "category": "spirits", "style_any": ["whiskey", "bourbon", "rye", "scotch"] } },
+        { "label": "Whiskey",           "emoji": "🥃", "next": "whiskey_category", "filters": { "category": "spirits" } },
         { "label": "Gin",               "emoji": "🍸", "next": "gin_style",      "filters": { "category": "spirits", "style_any": ["gin"] } },
         { "label": "Vodka",             "emoji": "❄️", "action": "recommend", "filters": { "category": "spirits", "style_any": ["vodka"] } },
         { "label": "Tequila / Mezcal",  "emoji": "🌵", "action": "recommend", "filters": { "category": "spirits", "style_any": ["tequila", "mezcal"] } },
         { "label": "Rum",               "emoji": "🏝️", "action": "recommend", "filters": { "category": "spirits", "style_any": ["rum"] } },
         { "label": "Something else",    "emoji": "🥃", "action": "recommend", "filters": { "category": "spirits" } }
+      ]
+    },
+
+    "whiskey_category": {
+      "kind": "choice",
+      "title": "What type of whiskey are you looking for?",
+      "subtitle": "Answer a few quick questions and I'll pull the bottle that fits your taste, occasion, and budget.",
+      "category": "spirits",
+      "options": [
+        { "label": "Scotch (Scottish Whisky)",      "emoji": "🏴",  "next": "whiskey_budget", "filters": { "style_any": ["scotch", "scotch whisky", "single malt", "blended scotch"] } },
+        { "label": "Irish Whiskey",                  "emoji": "☘️",  "next": "whiskey_budget", "filters": { "style_any": ["irish", "irish whiskey"] } },
+        { "label": "American (Bourbon, Rye, etc.)", "emoji": "🇺🇸",  "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye", "tennessee", "american whiskey", "american"] } },
+        { "label": "Japanese Whisky",                "emoji": "🗾",  "next": "whiskey_budget", "filters": { "style_any": ["japanese", "japanese whisky"] } },
+        { "label": "Other World Whiskies",           "emoji": "🌍",  "next": "whiskey_budget", "filters": { "style_any": ["canadian", "indian", "taiwanese", "world whisky"] } },
+        { "label": "Not sure — explain my options",  "emoji": "🤔",  "next": "whiskey_category_explain" }
+      ]
+    },
+
+    "whiskey_category_explain": {
+      "kind": "choice",
+      "title": "Quick cheat sheet",
+      "subtitle": "Scotch: smoky, peaty, aged in Scotland. Irish: smooth, easy-drinking, triple-distilled. American (Bourbon/Rye): sweet caramel-and-oak, corn- or rye-based, made in the USA. Japanese: delicate, balanced, Scotch-inspired. World: everything else — Canadian, Indian, Taiwanese.",
+      "category": "spirits",
+      "options": [
+        { "label": "Scotch — smoky & aged",              "emoji": "🏴", "next": "whiskey_budget", "filters": { "style_any": ["scotch", "scotch whisky", "single malt", "blended scotch"] } },
+        { "label": "Irish — smooth & easy",              "emoji": "☘️", "next": "whiskey_budget", "filters": { "style_any": ["irish", "irish whiskey"] } },
+        { "label": "American — sweet, caramel, oak",     "emoji": "🇺🇸", "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye", "tennessee", "american whiskey", "american"] } },
+        { "label": "Japanese — delicate & balanced",     "emoji": "🗾", "next": "whiskey_budget", "filters": { "style_any": ["japanese", "japanese whisky"] } },
+        { "label": "World — surprise me",                "emoji": "🌍", "next": "whiskey_budget", "filters": { "style_any": ["canadian", "indian", "taiwanese", "world whisky"] } },
+        { "label": "Show me everything",                 "emoji": "🥃", "next": "whiskey_budget", "filters": { "style_any": ["whiskey", "whisky", "bourbon", "rye", "scotch", "irish", "japanese"] } }
+      ]
+    },
+
+    "whiskey_budget": {
+      "kind": "choice",
+      "title": "What's your budget?",
+      "subtitle": "I'll stay inside the range — or flex a little if nothing fits exactly.",
+      "category": "spirits",
+      "options": [
+        { "label": "Under $40 — everyday & approachable", "emoji": "💵", "next": "whiskey_use_case", "filters": { "price_max": 40 } },
+        { "label": "$40 – $80 — premium & special releases", "emoji": "💎", "next": "whiskey_use_case", "filters": { "price_min": 40, "price_max": 80 } },
+        { "label": "$80+ — luxury, rare, collectible",   "emoji": "🎩", "next": "whiskey_use_case", "filters": { "price_min": 80 } },
+        { "label": "No budget limit",                    "emoji": "🌊", "next": "whiskey_use_case" }
+      ]
+    },
+
+    "whiskey_use_case": {
+      "kind": "choice",
+      "title": "What's it for?",
+      "subtitle": "How you plan to use it changes what's worth picking.",
+      "category": "spirits",
+      "options": [
+        { "label": "Celebration or gift",         "emoji": "🎁", "next": "whiskey_proof", "filters": { "intended_use_any": ["gift", "celebration", "rare"] } },
+        { "label": "Daily sipper",                "emoji": "🪑", "next": "whiskey_proof", "filters": { "intended_use_any": ["sipping", "daily", "everyday"] } },
+        { "label": "For cocktails",               "emoji": "🍹", "next": "whiskey_proof", "filters": { "intended_use_any": ["cocktail", "mixer"] } },
+        { "label": "Trying something new",        "emoji": "🧭", "next": "whiskey_proof", "filters": { "intended_use_any": ["unique", "adventure", "experimental"] } },
+        { "label": "Neat or over ice",            "emoji": "🧊", "next": "whiskey_proof", "filters": { "intended_use_any": ["sipping", "neat"] } }
+      ]
+    },
+
+    "whiskey_proof": {
+      "kind": "choice",
+      "title": "What proof feels right?",
+      "subtitle": "Proof is double the ABV. Lower = smoother; higher = bolder and more intense.",
+      "category": "spirits",
+      "options": [
+        { "label": "Low (<90 proof) — smooth & easy",            "emoji": "🪶", "next": "whiskey_flavor", "filters": { "abv_max": 45 } },
+        { "label": "Mid (90 – 100) — balanced",                  "emoji": "⚖️", "next": "whiskey_flavor", "filters": { "abv_min": 45, "abv_max": 50 } },
+        { "label": "High (100 – 120) — bold & intense",          "emoji": "🔥", "next": "whiskey_flavor", "filters": { "abv_min": 50, "abv_max": 60 } },
+        { "label": "Cask strength — unfiltered, full power",     "emoji": "🛢️", "next": "whiskey_flavor", "filters": { "abv_min": 57.5 } },
+        { "label": "No preference",                              "emoji": "🤷", "next": "whiskey_flavor" }
+      ]
+    },
+
+    "whiskey_flavor": {
+      "kind": "choice",
+      "title": "What flavor profile calls to you?",
+      "subtitle": "Pick the one that sounds best — I'll match it.",
+      "category": "spirits",
+      "options": [
+        { "label": "Fruity (apple, citrus, berry)",              "emoji": "🍎", "next": "whiskey_experience", "filters": { "flavor_any": ["fruity", "citrus", "apple", "berry"] } },
+        { "label": "Rich & sweet (caramel, chocolate, vanilla)", "emoji": "🍫", "next": "whiskey_experience", "filters": { "flavor_any": ["sweet", "caramel", "vanilla", "chocolate", "rich"] } },
+        { "label": "Woody / oaky (barrel, toasted wood)",        "emoji": "🪵", "next": "whiskey_experience", "filters": { "flavor_any": ["oaky", "woody", "toasted", "barrel"] } },
+        { "label": "Spicy (pepper, cinnamon, clove)",            "emoji": "🌶️", "next": "whiskey_experience", "filters": { "flavor_any": ["spicy", "pepper", "cinnamon", "clove"] } },
+        { "label": "Smoky & peaty (smoked, earthy)",             "emoji": "🔥", "next": "whiskey_experience", "filters": { "flavor_any": ["smoky", "peaty", "earthy", "smoked"] } },
+        { "label": "Nutty (almond, hazelnut)",                   "emoji": "🌰", "next": "whiskey_experience", "filters": { "flavor_any": ["nutty", "almond", "hazelnut"] } },
+        { "label": "Light & floral (honey, heather)",            "emoji": "🌸", "next": "whiskey_experience", "filters": { "flavor_any": ["floral", "honey", "light", "heather"] } }
+      ]
+    },
+
+    "whiskey_experience": {
+      "kind": "choice",
+      "title": "How experienced are you with whiskey?",
+      "subtitle": "I'll pitch results at the right level.",
+      "category": "spirits",
+      "options": [
+        { "label": "Beginner — easy-drinking, approachable", "emoji": "🌱", "next": "whiskey_occasion", "filters": { "intended_use_any": ["approachable", "smooth", "easy"] } },
+        { "label": "Intermediate — balanced & complex",      "emoji": "🌿", "next": "whiskey_occasion", "filters": { "intended_use_any": ["balanced", "complex"] } },
+        { "label": "Expert — bold, rare, experimental",      "emoji": "🌳", "next": "whiskey_occasion", "filters": { "intended_use_any": ["bold", "rare", "unique", "experimental"] } }
+      ]
+    },
+
+    "whiskey_occasion": {
+      "kind": "choice",
+      "title": "What's the vibe?",
+      "subtitle": "Last question before results (brand is optional).",
+      "category": "spirits",
+      "options": [
+        { "label": "Special occasion or gift",    "emoji": "🎊", "next": "whiskey_brand", "filters": { "intended_use_any": ["rare", "luxury", "gift"] } },
+        { "label": "Relaxing evening",             "emoji": "🌙", "next": "whiskey_brand", "filters": { "intended_use_any": ["sipping", "relax"] } },
+        { "label": "Celebratory (party, group)",   "emoji": "🥂", "next": "whiskey_brand", "filters": { "intended_use_any": ["party", "share"] } },
+        { "label": "Adventure or experimentation", "emoji": "🧭", "next": "whiskey_brand", "filters": { "intended_use_any": ["adventure", "unique"] } }
+      ]
+    },
+
+    "whiskey_brand": {
+      "kind": "choice",
+      "title": "Any brand preferences?",
+      "subtitle": "Totally optional — tap a favorite or let me surprise you.",
+      "category": "spirits",
+      "options": [
+        { "label": "I'm open — surprise me",      "emoji": "🎲", "action": "recommend", "filters": {} },
+        { "label": "Buffalo Trace",                "emoji": "🐃", "action": "recommend", "filters": { "brand_any": ["buffalo trace"] } },
+        { "label": "Maker's Mark",                 "emoji": "🔴", "action": "recommend", "filters": { "brand_any": ["makers mark", "maker's mark"] } },
+        { "label": "Woodford Reserve",             "emoji": "🐎", "action": "recommend", "filters": { "brand_any": ["woodford"] } },
+        { "label": "Knob Creek",                   "emoji": "🔔", "action": "recommend", "filters": { "brand_any": ["knob creek"] } },
+        { "label": "Jameson",                      "emoji": "☘️", "action": "recommend", "filters": { "brand_any": ["jameson"] } },
+        { "label": "Glenlivet / Glenfiddich",      "emoji": "🏴", "action": "recommend", "filters": { "brand_any": ["glenlivet", "glenfiddich"] } },
+        { "label": "Macallan",                     "emoji": "🎩", "action": "recommend", "filters": { "brand_any": ["macallan"] } },
+        { "label": "Lagavulin / Laphroaig",        "emoji": "🔥", "action": "recommend", "filters": { "brand_any": ["lagavulin", "laphroaig"] } },
+        { "label": "Suntory / Hibiki / Nikka",     "emoji": "🗾", "action": "recommend", "filters": { "brand_any": ["suntory", "hibiki", "nikka", "yamazaki", "hakushu"] } }
       ]
     },
 

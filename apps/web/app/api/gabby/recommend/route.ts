@@ -41,6 +41,9 @@ export async function OPTIONS() {
  *     is_local?: boolean,
  *     price_min?: number,
  *     price_max?: number,
+ *     abv_min?: number,            // whiskey proof floor (abv = proof / 2)
+ *     abv_max?: number,            // whiskey proof ceiling
+ *     brand_any?: string[],        // optional brand preference (ilike-or)
  *   },
  *   limit?: number
  * }
@@ -68,6 +71,14 @@ type Filters = {
   is_local?: boolean;
   price_min?: number;
   price_max?: number;
+  // Whiskey-specific: proof bands map to abv (proof = abv × 2).
+  // The guided whiskey wizard sets these from the "proof preference" step
+  // (low <90, mid 90-100, high 100-120, cask strength 115+).
+  abv_min?: number;
+  abv_max?: number;
+  // Optional brand narrowing from the final step of the whiskey wizard.
+  // Case-insensitive OR across the canonical brand column.
+  brand_any?: string[];
 };
 
 type Row = {
@@ -113,8 +124,21 @@ async function query(
   if (typeof f.is_local === "boolean") q = q.eq("is_local", f.is_local);
   if (typeof f.price_min === "number") q = q.gte("price", f.price_min);
   if (typeof f.price_max === "number") q = q.lte("price", f.price_max);
+  if (typeof f.abv_min === "number") q = q.gte("abv", f.abv_min);
+  if (typeof f.abv_max === "number") q = q.lte("abv", f.abv_max);
   if (f.style_any?.length) q = q.overlaps("style", f.style_any);
   if (f.flavor_any?.length) q = q.overlaps("flavor_profile", f.flavor_any);
+  if (f.brand_any?.length) {
+    // Case-insensitive OR across brands. PostgREST's .or() takes a
+    // comma-delimited filter list — we ilike-match each brand so
+    // "Maker's Mark" matches "makers mark", "Makers Mark", etc.
+    const clauses = f.brand_any
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((b) => `brand.ilike.%${b.replace(/[,()]/g, "")}%`)
+      .join(",");
+    if (clauses) q = q.or(clauses);
+  }
   // Merge pairing cues into intended_use for the overlap query.
   const useCues = [
     ...(f.intended_use_any ?? []),
@@ -152,7 +176,9 @@ export async function POST(req: Request) {
   // (body/hop/sweetness); then the fuzzier "flavor" overlap; then style.
   const relaxSteps: Array<{ drop: (keyof Filters)[]; label: string }> = [
     { drop: [], label: "" },
+    { drop: ["brand_any"], label: "brand" },
     { drop: ["price_min", "price_max"], label: "budget" },
+    { drop: ["abv_min", "abv_max"], label: "proof" },
     { drop: ["body", "sweetness", "hop_level"], label: "body" },
     { drop: ["flavor_any"], label: "flavor" },
     { drop: ["intended_use_any", "pairing_any"], label: "occasion" },

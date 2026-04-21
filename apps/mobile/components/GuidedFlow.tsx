@@ -32,6 +32,9 @@ type Filters = {
   is_local?: boolean;
   price_min?: number;
   price_max?: number;
+  abv_min?: number;
+  abv_max?: number;
+  brand_any?: string[];
 };
 
 type Option = {
@@ -75,10 +78,20 @@ function mergeFilters(a: Filters, b?: Filters): Filters {
     if (bv === undefined) continue;
     const av = out[k];
     if (Array.isArray(av) && Array.isArray(bv)) {
-      // Intersect array filters so each step narrows, doesn't widen.
-      const set = new Set(av.map((x) => x.toLowerCase()));
-      const intersect = bv.filter((x) => set.has(x.toLowerCase()));
-      (out[k] as unknown) = intersect.length > 0 ? intersect : bv;
+      // Union array filters (deduped, case-insensitive). Server uses
+      // `.overlaps()` which returns matches if ANY token hits, so unioning
+      // across steps widens the match space rather than narrowing it.
+      // This is the right shape for multi-step wizards like whiskey where
+      // each step contributes flavor/usage tokens that should all count.
+      const seen = new Set<string>();
+      const union: string[] = [];
+      for (const x of [...av, ...bv]) {
+        const key = x.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        union.push(x);
+      }
+      (out[k] as unknown) = union;
     } else {
       (out[k] as unknown) = bv;
     }
