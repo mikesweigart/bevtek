@@ -42,19 +42,36 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 10
+    # Opt into Node 24 for the JS actions themselves (checkout,
+    # setup-node, upload-artifact, pnpm/action-setup). GitHub is
+    # removing Node 20 from runners on 2026-09-16; this env forces
+    # the modern runtime now so the warning stops firing and we
+    # don't get surprised on the cutover date.
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # IMPORTANT: pnpm must be installed BEFORE setup-node when we
+      # use setup-node's cache: pnpm feature — otherwise it can't
+      # resolve the store path. We keep that order even without the
+      # cache so the pattern is consistent.
+      #
+      # We deliberately do NOT pass `version:` here. Passing an
+      # explicit version collides with `packageManager: "pnpm@X.Y.Z"`
+      # in root package.json and fails with ERR_PNPM_BAD_PM_VERSION.
+      # Action-setup auto-detects the pinned version from
+      # package.json when `version` is omitted, which is what we want.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "10"
+          # Node 22 LTS. Node 20 is deprecated on GitHub runners and
+          # pnpm 10 supports 22 natively.
+          node-version: "22"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -78,3 +95,8 @@ jobs:
           name: gabby-eval-results
           path: scripts/eval-results/
           retention-days: 30
+          # If the eval crashed before writing any output (e.g. a 5xx
+          # from prod), the results directory won't exist. Silence the
+          # "no files found" warning in that case — the job log is
+          # already red and tells the real story.
+          if-no-files-found: ignore

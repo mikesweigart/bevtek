@@ -126,7 +126,37 @@ async function query(
   if (typeof f.price_max === "number") q = q.lte("price", f.price_max);
   if (typeof f.abv_min === "number") q = q.gte("abv", f.abv_min);
   if (typeof f.abv_max === "number") q = q.lte("abv", f.abv_max);
-  if (f.style_any?.length) q = q.overlaps("style", f.style_any);
+  if (f.style_any?.length) {
+    // Style is the shopper's primary intent ("Bourbon" not "Tequila").
+    // We match three ways, OR'd together, because enrichment quality
+    // varies store-to-store:
+    //   1. style[]       — canonical array set by the enrichment pipeline
+    //   2. varietal      — the human-facing "spirit type" column
+    //   3. subcategory   — often holds the same word as a free-text label
+    // If a row matches ANY of these on ANY token, it qualifies. That way
+    // an un-enriched bourbon row with varietal="Bourbon" still lands in
+    // results instead of being silently dropped.
+    const tokens = f.style_any
+      .map((t) => t.trim())
+      .filter(Boolean)
+      // Strip characters that would break the PostgREST .or() filter
+      // string (commas, parens, quotes).
+      .map((t) => t.replace(/[,()"'%]/g, ""));
+    if (tokens.length) {
+      const clauses: string[] = [];
+      // Array-overlap filter. PostgREST array syntax: style.ov.{a,b,c}
+      // Quote tokens with spaces so the server parses them as one element.
+      const arrLit = tokens
+        .map((t) => (/[\s]/.test(t) ? `"${t}"` : t))
+        .join(",");
+      clauses.push(`style.ov.{${arrLit}}`);
+      for (const t of tokens) {
+        clauses.push(`varietal.ilike.%${t}%`);
+        clauses.push(`subcategory.ilike.%${t}%`);
+      }
+      q = q.or(clauses.join(","));
+    }
+  }
   if (f.flavor_any?.length) q = q.overlaps("flavor_profile", f.flavor_any);
   if (f.brand_any?.length) {
     // Case-insensitive OR across brands. PostgREST's .or() takes a
@@ -173,7 +203,16 @@ export async function POST(req: Request) {
   // Relaxation cascade — we try strict first, then progressively drop
   // the pickiest filters. Ordering matters: price is the first to go
   // because shoppers often overstate budget; then subtle attributes
-  // (body/hop/sweetness); then the fuzzier "flavor" overlap; then style.
+  // (body/hop/sweetness); then the fuzzier "flavor" overlap.
+  //
+  // We deliberately DO NOT drop `style_any` or `category`/`subcategory`
+  // in a way that would widen across spirit types. If a shopper says
+  // "I want bourbon," showing them tequila is worse than showing them
+  // nothing. Prior versions dropped style as a last resort, which caused
+  // Tito's Vodka to appear in bourbon results whenever an un-enriched
+  // inventory row had a NULL style[] array. The style matcher now
+  // OR's across style[], varietal, and subcategory so we have three
+  // chances to hit a real bourbon before giving up.
   const relaxSteps: Array<{ drop: (keyof Filters)[]; label: string }> = [
     { drop: [], label: "" },
     { drop: ["brand_any"], label: "brand" },
@@ -182,8 +221,6 @@ export async function POST(req: Request) {
     { drop: ["body", "sweetness", "hop_level"], label: "body" },
     { drop: ["flavor_any"], label: "flavor" },
     { drop: ["intended_use_any", "pairing_any"], label: "occasion" },
-    { drop: ["style_any"], label: "style" },
-    { drop: ["subcategory"], label: "subcategory" },
   ];
 
   const relaxed: string[] = [];

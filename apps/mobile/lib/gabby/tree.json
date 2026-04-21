@@ -191,7 +191,7 @@
       "options": [
         { "label": "Scotch (Scottish Whisky)",      "emoji": "🏴",  "next": "whiskey_budget", "filters": { "style_any": ["scotch", "scotch whisky", "single malt", "blended scotch"] } },
         { "label": "Irish Whiskey",                  "emoji": "☘️",  "next": "whiskey_budget", "filters": { "style_any": ["irish", "irish whiskey"] } },
-        { "label": "American (Bourbon, Rye, etc.)", "emoji": "🇺🇸",  "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye", "tennessee", "american whiskey", "american"] } },
+        { "label": "American (Bourbon, Rye, etc.)", "emoji": "🇺🇸",  "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye whiskey", "tennessee whiskey", "american whiskey"] } },
         { "label": "Japanese Whisky",                "emoji": "🗾",  "next": "whiskey_budget", "filters": { "style_any": ["japanese", "japanese whisky"] } },
         { "label": "Other World Whiskies",           "emoji": "🌍",  "next": "whiskey_budget", "filters": { "style_any": ["canadian", "indian", "taiwanese", "world whisky"] } },
         { "label": "Not sure — explain my options",  "emoji": "🤔",  "next": "whiskey_category_explain" }
@@ -206,10 +206,10 @@
       "options": [
         { "label": "Scotch — smoky & aged",              "emoji": "🏴", "next": "whiskey_budget", "filters": { "style_any": ["scotch", "scotch whisky", "single malt", "blended scotch"] } },
         { "label": "Irish — smooth & easy",              "emoji": "☘️", "next": "whiskey_budget", "filters": { "style_any": ["irish", "irish whiskey"] } },
-        { "label": "American — sweet, caramel, oak",     "emoji": "🇺🇸", "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye", "tennessee", "american whiskey", "american"] } },
+        { "label": "American — sweet, caramel, oak",     "emoji": "🇺🇸", "next": "whiskey_budget", "filters": { "style_any": ["bourbon", "rye whiskey", "tennessee whiskey", "american whiskey"] } },
         { "label": "Japanese — delicate & balanced",     "emoji": "🗾", "next": "whiskey_budget", "filters": { "style_any": ["japanese", "japanese whisky"] } },
         { "label": "World — surprise me",                "emoji": "🌍", "next": "whiskey_budget", "filters": { "style_any": ["canadian", "indian", "taiwanese", "world whisky"] } },
-        { "label": "Show me everything",                 "emoji": "🥃", "next": "whiskey_budget", "filters": { "style_any": ["whiskey", "whisky", "bourbon", "rye", "scotch", "irish", "japanese"] } }
+        { "label": "Show me everything",                 "emoji": "🥃", "next": "whiskey_budget", "filters": { "subcategory": "whiskey" } }
       ]
     },
 
