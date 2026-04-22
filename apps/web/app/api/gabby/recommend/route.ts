@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
+import { rerankCandidates, isRerankEnabled } from "@/lib/gabby/rerank";
 
 export const runtime = "nodejs";
 
@@ -266,9 +267,25 @@ export async function POST(req: Request) {
     relaxed.length > 0 && products.length > 0 ? relaxed.length : 0,
   );
 
+  // Optional Haiku re-rank. Inert unless GABBY_RERANK_ENABLED=true on
+  // the deployment AND the candidate list has enough room + soft
+  // preferences to actually benefit. Any failure falls through to the
+  // original order — shoppers never see a broken page because of this.
+  // See apps/web/lib/gabby/rerank.ts for the decision logic.
+  let justifications: Record<string, string> | undefined;
+  let reranked = false;
+  if (isRerankEnabled() && products.length > 0) {
+    const result = await rerankCandidates(products, filters);
+    products = result.products;
+    reranked = result.reranked;
+    justifications = result.justifications;
+  }
+
   return json({
     products,
     relaxed: actuallyRelaxed,
     total: products.length,
+    reranked,
+    ...(justifications ? { justifications } : {}),
   });
 }
