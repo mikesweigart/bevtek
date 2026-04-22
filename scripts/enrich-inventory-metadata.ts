@@ -34,6 +34,9 @@
  *   name, brand, varietal    — normalizeNames handles these
  *
  * USAGE:
+ *   # Read-only analyze (no Haiku spend — just counts NULL columns):
+ *   SUPABASE_DB_URL=... pnpm enrich:metadata -- --analyze-only
+ *
  *   # Dry-run everything (default — no writes):
  *   SUPABASE_DB_URL=... ANTHROPIC_API_KEY=... pnpm enrich:metadata
  *
@@ -45,6 +48,9 @@
  *     --store-id=c7dd888e-94c3-430f-8e62-97603122b392 --limit=20 --write
  *
  * FLAGS:
+ *   --analyze-only       Read-only job-size report. No Haiku calls; no
+ *                        API key needed. Shows per-store/per-category
+ *                        NULL counts and estimated cost of a full run.
  *   --write              Commit to DB. Without this, everything is dry-run.
  *   --store-id=<uuid>    Restrict to one store (default: all stores).
  *   --limit=<n>          Max rows to process (default: unlimited).
@@ -82,6 +88,7 @@ import { Client } from "pg";
 
 type Args = {
   write: boolean;
+  analyzeOnly: boolean;
   storeId: string | null;
   limit: number | null;
   batchSize: number;
@@ -94,6 +101,7 @@ function parseArgs(): Args {
   const raw = process.argv.slice(2);
   const args: Args = {
     write: false,
+    analyzeOnly: false,
     storeId: null,
     limit: null,
     batchSize: 8,
@@ -103,6 +111,7 @@ function parseArgs(): Args {
   };
   for (const a of raw) {
     if (a === "--write") args.write = true;
+    else if (a === "--analyze-only" || a === "--analyze") args.analyzeOnly = true;
     else if (a === "--verbose") args.verbose = true;
     else if (a.startsWith("--store-id=")) args.storeId = a.split("=")[1];
     else if (a.startsWith("--limit=")) args.limit = Number(a.split("=")[1]) || null;
@@ -115,6 +124,108 @@ function parseArgs(): Args {
     }
   }
   return args;
+}
+
+// ---------------------------------------------------------------------------
+// Analyze — read-only NULL-column counts. No Haiku spend. Use this to
+// decide whether to run the full enrichment and estimate cost.
+// ---------------------------------------------------------------------------
+
+type AnalysisRow = {
+  store_id: string;
+  category: string;
+  total_rows: number;
+  missing_style: number;
+  missing_flavor_profile: number;
+  missing_intended_use: number;
+  missing_body: number;
+  missing_sweetness: number;
+  missing_hop_level: number;
+  missing_abv: number;
+  rows_needing_any_fill: number;
+};
+
+async function analyze(
+  client: Client,
+  storeId: string | null,
+): Promise<AnalysisRow[]> {
+  const params: (string | number)[] = [];
+  const where: string[] = [
+    "is_active = true",
+    "name is not null",
+    "category in ('wine','beer','spirits','mixer','garnish')",
+  ];
+  if (storeId) {
+    params.push(storeId);
+    where.push(`store_id = $${params.length}`);
+  }
+  // Aggregate per (store, category) so the output is actionable:
+  // the owner can see that spirits are 80% empty on style but wine is 20%.
+  const sql = `
+    select
+      store_id::text,
+      category,
+      count(*)::int as total_rows,
+      count(*) filter (where style is null or array_length(style, 1) is null)::int as missing_style,
+      count(*) filter (where flavor_profile is null or array_length(flavor_profile, 1) is null)::int as missing_flavor_profile,
+      count(*) filter (where intended_use is null or array_length(intended_use, 1) is null)::int as missing_intended_use,
+      count(*) filter (where body is null and category in ('wine','beer'))::int as missing_body,
+      count(*) filter (where sweetness is null and category = 'wine')::int as missing_sweetness,
+      count(*) filter (where hop_level is null and category = 'beer')::int as missing_hop_level,
+      count(*) filter (where abv is null)::int as missing_abv,
+      count(*) filter (
+        where style is null or array_length(style, 1) is null
+           or flavor_profile is null or array_length(flavor_profile, 1) is null
+           or intended_use is null or array_length(intended_use, 1) is null
+      )::int as rows_needing_any_fill
+    from public.inventory
+    where ${where.join(" and ")}
+    group by store_id, category
+    order by store_id, category
+  `;
+  const res = await client.query<AnalysisRow>(sql, params);
+  return res.rows;
+}
+
+function printAnalysis(rows: AnalysisRow[]): number {
+  if (rows.length === 0) {
+    console.log("[enrich] no matching inventory rows found.");
+    return 0;
+  }
+  // Group by store for readability. The owner cares per-store.
+  const byStore = new Map<string, AnalysisRow[]>();
+  for (const r of rows) {
+    const list = byStore.get(r.store_id) ?? [];
+    list.push(r);
+    byStore.set(r.store_id, list);
+  }
+  let totalNeedingFill = 0;
+  for (const [sid, list] of byStore) {
+    const total = list.reduce((s, r) => s + r.total_rows, 0);
+    const needing = list.reduce((s, r) => s + r.rows_needing_any_fill, 0);
+    totalNeedingFill += needing;
+    console.log(`\n  store ${sid.slice(0, 8)}…  ${total} active rows, ${needing} need enrichment`);
+    for (const r of list) {
+      const pct = total === 0 ? 0 : Math.round((r.rows_needing_any_fill / r.total_rows) * 100);
+      console.log(
+        `    ${r.category.padEnd(8)}  ${String(r.total_rows).padStart(5)} rows, ` +
+          `${String(r.rows_needing_any_fill).padStart(5)} need fill (${String(pct).padStart(3)}%)  ` +
+          `style:${r.missing_style} flavor:${r.missing_flavor_profile} use:${r.missing_intended_use}` +
+          (r.missing_body > 0 ? ` body:${r.missing_body}` : "") +
+          (r.missing_sweetness > 0 ? ` sweet:${r.missing_sweetness}` : "") +
+          (r.missing_hop_level > 0 ? ` hop:${r.missing_hop_level}` : "") +
+          (r.missing_abv > 0 ? ` abv:${r.missing_abv}` : ""),
+      );
+    }
+  }
+  // Cost estimate: ~65 tokens/row at batch=8 (shared header amortized).
+  // Haiku 4.5 pricing is $1/Mi in, $5/Mo out — call it ~$0.0005/row total.
+  const estimatedCost = (totalNeedingFill * 0.0005).toFixed(2);
+  console.log(
+    `\n[enrich] total ${totalNeedingFill} rows need enrichment across ${byStore.size} store(s).`,
+  );
+  console.log(`[enrich] estimated cost at Haiku 4.5 list price: ~$${estimatedCost} (one-time)`);
+  return totalNeedingFill;
 }
 
 // ---------------------------------------------------------------------------
@@ -541,8 +652,10 @@ async function main() {
     console.error("SUPABASE_DB_URL not set. See scripts/apply-migration.ts for format.");
     process.exit(1);
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY not set.");
+  // Analyze mode is read-only — no Haiku spend, no API key needed.
+  // Only require ANTHROPIC_API_KEY when we're actually going to call Claude.
+  if (!args.analyzeOnly && !process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY not set (not needed with --analyze-only).");
     process.exit(1);
   }
 
@@ -557,6 +670,19 @@ async function main() {
 
   const client = new Client({ connectionString: dbUrl });
   await client.connect();
+
+  // Short-circuit for --analyze-only: just count NULL columns and bail.
+  // Useful for the owner to see the job size before committing to run
+  // the full Haiku pass.
+  if (args.analyzeOnly) {
+    try {
+      const analysis = await analyze(client, args.storeId);
+      printAnalysis(analysis);
+    } finally {
+      await client.end();
+    }
+    return;
+  }
 
   // Prepare audit output file.
   const outPath = resolve(args.output);

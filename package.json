@@ -13,7 +13,8 @@
     "db:rls-check": "tsx scripts/check-rls.ts",
     "eval:gabby": "tsx scripts/eval-gabby.ts",
     "enrich:metadata": "tsx scripts/enrich-inventory-metadata.ts",
-    "enrich:metadata:dry": "tsx scripts/enrich-inventory-metadata.ts --limit=20"
+    "enrich:metadata:dry": "tsx scripts/enrich-inventory-metadata.ts --limit=20",
+    "enrich:metadata:analyze": "tsx scripts/enrich-inventory-metadata.ts --analyze-only"
   },
   "engines": {
     "node": ">=20",

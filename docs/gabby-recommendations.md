@@ -52,6 +52,11 @@ Connection string (URI). Treat it like a nuke code — it's service-role.
 ### Safe operating workflow
 
 ```bash
+# 0. Read-only analyze to see the job size BEFORE any Haiku spend.
+#    Reports NULL-column counts per store/category and a cost estimate.
+#    No API key required.
+SUPABASE_DB_URL=… pnpm enrich:metadata:analyze
+
 # 1. Dry-run a 20-row sample to eyeball the output.
 SUPABASE_DB_URL=… ANTHROPIC_API_KEY=… \
   pnpm enrich:metadata:dry
