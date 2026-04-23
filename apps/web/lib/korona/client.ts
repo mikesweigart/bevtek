@@ -108,8 +108,14 @@ export type KoronaProduct = {
   name: string | null;
   /** First barcode from `codes[]`, if present. */
   barcode: string | null;
+  /** All barcodes from `codes[]` (one product can have several — short + long UPC). */
+  allCodes: string[];
   /** Default/retail price in the store's base currency, if present. */
   price: number | null;
+  /** `active` flag — usually true; false when soft-deleted. */
+  active: boolean | null;
+  /** `deactivated` flag — true when the operator has disabled the product. */
+  deactivated: boolean | null;
   /** Raw product payload, for metadata stash. */
   raw: Record<string, unknown>;
 };
@@ -204,21 +210,28 @@ function normalizeListResponse(json: unknown): KoronaListResponse {
       results.push(normalizeProduct(r as Record<string, unknown>));
     }
   }
+  // KORONA envelope uses `currentPage`, `pagesTotal`, `resultsTotal` — NOT
+  // the Spring-standard `page`, `pages`, `total`. Empirically verified via
+  // curl against /accounts/{id}/products. Don't change without re-checking.
   return {
     results,
-    total: numberOrDefault(o.total, results.length),
-    pages: numberOrDefault(o.pages, 1),
-    page: numberOrDefault(o.page, 1),
+    total: numberOrDefault(o.resultsTotal, results.length),
+    pages: numberOrDefault(o.pagesTotal, 1),
+    page: numberOrDefault(o.currentPage, 1),
   };
 }
 
 function normalizeProduct(raw: Record<string, unknown>): KoronaProduct {
+  const allCodes = collectCodes(raw.codes);
   return {
     id: stringOrNull(raw.id),
     number: stringOrNull(raw.number),
     name: stringOrNull(raw.name),
-    barcode: firstCode(raw.codes),
+    barcode: allCodes[0] ?? null,
+    allCodes,
     price: firstPrice(raw.prices),
+    active: boolOrNull(raw.active),
+    deactivated: boolOrNull(raw.deactivated),
     raw,
   };
 }
@@ -231,17 +244,28 @@ function numberOrDefault(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
-function firstCode(codes: unknown): string | null {
-  if (!Array.isArray(codes)) return null;
+function boolOrNull(v: unknown): boolean | null {
+  return typeof v === "boolean" ? v : null;
+}
+
+function collectCodes(codes: unknown): string[] {
+  if (!Array.isArray(codes)) return [];
+  const out: string[] = [];
   for (const entry of codes) {
-    if (typeof entry === "string" && entry.length > 0) return entry;
+    if (typeof entry === "string" && entry.length > 0) {
+      out.push(entry);
+      continue;
+    }
     if (entry && typeof entry === "object") {
       const e = entry as Record<string, unknown>;
-      if (typeof e.productCode === "string") return e.productCode;
-      if (typeof e.code === "string") return e.code;
+      if (typeof e.productCode === "string" && e.productCode.length > 0) {
+        out.push(e.productCode);
+      } else if (typeof e.code === "string" && e.code.length > 0) {
+        out.push(e.code);
+      }
     }
   }
-  return null;
+  return out;
 }
 
 function firstPrice(prices: unknown): number | null {

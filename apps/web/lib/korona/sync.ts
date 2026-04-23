@@ -170,12 +170,10 @@ export async function syncKoronaProducts(storeId: string): Promise<SyncResult> {
       totalPages = Math.max(1, resp.pages);
       counters.rows_scanned += resp.results.length;
 
-      for (const product of resp.results) {
-        const outcome = await upsertProduct(client, storeId, product);
-        if (outcome === "upserted") counters.rows_upserted += 1;
-        else if (outcome === "skipped") counters.rows_skipped += 1;
-        else counters.rows_failed += 1;
-      }
+      const outcome = await upsertBatch(client, storeId, resp.results);
+      counters.rows_upserted += outcome.upserted;
+      counters.rows_skipped += outcome.skipped;
+      counters.rows_failed += outcome.failed;
       page += 1;
     }
 
@@ -207,65 +205,103 @@ export async function syncKoronaProducts(storeId: string): Promise<SyncResult> {
 }
 
 // --------------------------------------------------------------------------
-// Upsert one product
+// Batched per-page upsert
 // --------------------------------------------------------------------------
+//
+// Per-product read+write (the obvious v1) is 2 DB roundtrips × 22k products
+// = ~45k roundtrips per sync → 30+ min, blows through the 300s cron ceiling.
+//
+// Batched version: 1 SELECT for the whole page's existing metadata, then a
+// single UPSERT for the whole page. 2 roundtrips per 100 products → ~450
+// roundtrips for the big catalog → well under 60s end-to-end.
+//
+// We DON'T store `product.raw` in the DB. At 22k rows × ~2KB raw = ~45MB of
+// jsonb that grows every sync — not worth the cost when a fresh pull can
+// regenerate it. We keep the mapped fields (id, barcode, allCodes,
+// last_synced_at) which are enough for reconciliation and barcode lookup.
 
-type UpsertOutcome = "upserted" | "skipped" | "failed";
+type BatchOutcome = { upserted: number; skipped: number; failed: number };
 
-async function upsertProduct(
+async function upsertBatch(
   client: ReturnType<typeof svc>,
   storeId: string,
-  product: KoronaProduct,
-): Promise<UpsertOutcome> {
-  if (!client) return "failed";
+  products: KoronaProduct[],
+): Promise<BatchOutcome> {
+  if (!client) {
+    return { upserted: 0, skipped: 0, failed: products.length };
+  }
 
-  // Without a SKU we cannot preserve identity across syncs — skip rather
-  // than invent one. Operators see the count in the admin dashboard and
-  // can fix the KORONA record upstream.
-  if (!product.number) return "skipped";
+  // Products without a SKU can't upsert (we key by store_id+sku). Count
+  // them as skipped up-front and exclude from the batch.
+  const valid: KoronaProduct[] = [];
+  let skipped = 0;
+  for (const p of products) {
+    if (p.number) valid.push(p);
+    else skipped += 1;
+  }
+  if (valid.length === 0) return { upserted: 0, skipped, failed: 0 };
 
+  // Read existing metadata for every SKU in this page. Supabase `.in()` has
+  // a practical limit around 1000 values — PAGE_SIZE=100 is safely under.
+  const skus = valid.map((p) => p.number as string);
+  let existingMeta = new Map<string, Record<string, unknown>>();
   try {
-    // Read the existing row so we can preserve fields KORONA doesn't own.
-    const { data: existing, error: readError } = await client
+    const { data, error } = await client
       .from("inventory")
-      .select("id, metadata")
+      .select("sku, metadata")
       .eq("store_id", storeId)
-      .eq("sku", product.number)
-      .maybeSingle();
-    if (readError) return "failed";
+      .in("sku", skus);
+    if (error) {
+      return { upserted: 0, skipped, failed: valid.length };
+    }
+    existingMeta = new Map(
+      (data as Array<{ sku: string; metadata: Record<string, unknown> | null }>).map(
+        (row) => [row.sku, row.metadata ?? {}],
+      ),
+    );
+  } catch {
+    return { upserted: 0, skipped, failed: valid.length };
+  }
 
-    const existingMetadata =
-      (existing as { metadata?: Record<string, unknown> } | null)?.metadata ??
-      {};
-
-    const mergedMetadata = {
-      ...existingMetadata,
-      korona: {
-        id: product.id,
-        barcode: product.barcode,
-        last_synced_at: new Date().toISOString(),
-        raw: product.raw,
-      },
-    };
-
-    // Build an update payload that only touches fields KORONA is authoritative
-    // for. Never overwrite cost/description/tasting_notes — those are
-    // operator/Megan-enriched.
+  const now = new Date().toISOString();
+  const payloads = valid.map((p) => {
+    const prior = existingMeta.get(p.number as string) ?? {};
+    // Active in our system iff Korona reports active AND not deactivated.
+    // Missing fields treated as null → default to active (new rows come in
+    // enabled; explicit disable requires Korona to say so).
+    const isActive =
+      (p.active === null ? true : p.active) &&
+      (p.deactivated === null ? true : !p.deactivated);
     const payload: Record<string, unknown> = {
       store_id: storeId,
-      sku: product.number,
-      name: product.name ?? "(unnamed)",
-      metadata: mergedMetadata,
-      is_active: true,
+      sku: p.number,
+      name: p.name ?? "(unnamed)",
+      is_active: isActive,
+      metadata: {
+        ...prior,
+        korona: {
+          id: p.id,
+          barcode: p.barcode,
+          all_codes: p.allCodes,
+          last_synced_at: now,
+        },
+      },
     };
-    if (product.price != null) payload.price = product.price;
+    // Only overwrite price when Korona provides one — preserve
+    // operator-entered prices for rows Korona didn't price.
+    if (p.price != null) payload.price = p.price;
+    return payload;
+  });
 
-    const { error: writeError } = await client
+  try {
+    const { error } = await client
       .from("inventory")
-      .upsert(payload, { onConflict: "store_id,sku" });
-    if (writeError) return "failed";
-    return "upserted";
+      .upsert(payloads, { onConflict: "store_id,sku" });
+    if (error) {
+      return { upserted: 0, skipped, failed: valid.length };
+    }
+    return { upserted: valid.length, skipped, failed: 0 };
   } catch {
-    return "failed";
+    return { upserted: 0, skipped, failed: valid.length };
   }
 }
