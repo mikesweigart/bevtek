@@ -31,6 +31,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import * as Sentry from "@sentry/nextjs";
 import { logAudit } from "@/lib/audit/log";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -46,6 +47,12 @@ export async function POST(req: Request) {
     );
   }
   const accessToken = m[1];
+
+  // Rate-limit by the requesting IP. We can't key by user id yet because
+  // we haven't validated the token — but a legitimate shopper only needs
+  // 1-2 exports ever, so even a per-IP cap of 10/day is generous.
+  const rl = await checkRate("account-export", identifyRequest(req));
+  if (!rl.success) return rateLimitResponse(rl);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

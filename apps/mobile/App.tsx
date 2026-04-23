@@ -208,9 +208,9 @@ export default function App() {
   useEffect(() => {
     async function hydrate(s: Session | null) {
       setSession(s);
-      // Identify the user in Sentry so crashes cluster by account.
+      // Identify the user in Sentry by UUID only (no email/PII).
       // No-op when Sentry isn't configured.
-      setSentryUser(s?.user ? { id: s.user.id, email: s.user.email } : null);
+      setSentryUser(s?.user ? { id: s.user.id } : null);
       if (!s) {
         setRole(null);
         setLoading(false);

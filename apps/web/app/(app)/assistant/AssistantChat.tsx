@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { sendMessageAction, type ChatMessage, type ChatState } from "./actions";
+import { AIDisclaimer } from "@/components/AIDisclaimer";
 
 const SUGGESTIONS = [
   "What wine goes well with grilled chicken?",
@@ -76,7 +77,7 @@ export function AssistantChat() {
         {!isEmpty && (
           <div className="space-y-4 py-4">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === "user"
                     ? "bg-[color:var(--color-gold)] text-white rounded-br-md"
@@ -90,6 +91,9 @@ export function AssistantChat() {
                   )}
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
+                {msg.role === "assistant" && (
+                  <AIDisclaimer variant="footnote" className="mt-1 ml-2" />
+                )}
               </div>
             ))}
             {sending && (

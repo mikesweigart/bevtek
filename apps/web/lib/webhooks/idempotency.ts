@@ -22,7 +22,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-type Provider = "stripe" | "retell" | "sendblue";
+type Provider = "stripe" | "retell" | "sendblue" | "korona";
 
 type ClaimResult = "fresh" | "duplicate" | "ledger-unavailable";
 

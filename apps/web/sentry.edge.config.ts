@@ -3,6 +3,7 @@
 // size limits. Same DSN gate as the server config.
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent, scrubSentryBreadcrumb } from "@/lib/sentry/scrub";
 
 const dsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -12,5 +13,8 @@ if (dsn) {
     environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
     tracesSampleRate: 0.05,
     release: process.env.VERCEL_GIT_COMMIT_SHA,
+    sendDefaultPii: false,
+    beforeSend: scrubSentryEvent,
+    beforeBreadcrumb: scrubSentryBreadcrumb,
   });
 }

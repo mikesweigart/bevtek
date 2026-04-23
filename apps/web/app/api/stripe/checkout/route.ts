@@ -2,9 +2,24 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
 import { STRIPE_PLANS, TRIAL_DAYS, type PlanKey } from "@/lib/stripe/config";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/stripe/checkout — creates a Stripe Checkout session for a plan
 export async function POST(request: NextRequest) {
+  // Auth first so we can identify the rate-limit bucket by user. Without
+  // this, an attacker would be bucketed by IP and could enumerate across
+  // many users behind the same NAT.
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // Rate-limit BEFORE we hit Stripe's API. Prevents card-enumeration abuse
+  // where a bot creates many Checkout sessions to probe card validity.
+  const rl = await checkRate("stripe-checkout", identifyRequest(request, auth.user.id));
+  if (!rl.success) return rateLimitResponse(rl);
+
   const body = (await request.json()) as { plan: string };
   const planKey = body.plan as PlanKey;
   const plan = STRIPE_PLANS[planKey];
@@ -25,12 +40,6 @@ export async function POST(request: NextRequest) {
       { error: "Stripe not configured — add STRIPE_SECRET_KEY" },
       { status: 500 },
     );
-  }
-
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   // Get or create Stripe customer

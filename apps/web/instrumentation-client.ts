@@ -3,6 +3,7 @@
 // for browser code).
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent, scrubSentryBreadcrumb } from "@/lib/sentry/scrub";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
@@ -30,6 +31,12 @@ if (dsn) {
       "Non-Error promise rejection captured",
     ],
     release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
+    // Browser-side PII scrubbing: the browser always captures the URL
+    // and some request context. Strip emails / phone / tokens before
+    // anything leaves the user's machine.
+    sendDefaultPii: false,
+    beforeSend: scrubSentryEvent,
+    beforeBreadcrumb: scrubSentryBreadcrumb,
   });
 }
 

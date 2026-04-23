@@ -51,7 +51,11 @@ type LimiterName =
   | "assist-message"
   | "assist-create"
   | "gabby-recommend"
-  | "support-ticket";
+  | "support-ticket"
+  | "photo-submit"
+  | "inventory-enrich"
+  | "stripe-checkout"
+  | "account-export";
 
 const CONFIG: Record<LimiterName, { perMinute: number; perDay: number }> = {
   // Public shopper-facing Gabby. A chatty shopper in a store might do
@@ -67,6 +71,23 @@ const CONFIG: Record<LimiterName, { perMinute: number; perDay: number }> = {
   // Report-a-problem tickets. Abuse here = our own ticket queue, but
   // still worth bounding.
   "support-ticket":   { perMinute: 5,   perDay: 30 },
+  // Catalog photo upload → moderation (OpenAI + Claude Haiku cost). A
+  // diligent staffer shooting a shelf of 200 products could legitimately
+  // do 60-80/min; 90/min is a comfortable ceiling. Daily cap keeps a
+  // possessed client bot from clearing the free-tier moderation quota.
+  "photo-submit":     { perMinute: 90,  perDay: 2000 },
+  // Manual inventory enrichment (OpenFoodFacts + Claude). Each call hits
+  // external APIs, so we want this tight — it's a debug/tooling endpoint,
+  // not a production write path.
+  "inventory-enrich": { perMinute: 10,  perDay: 200 },
+  // Stripe Checkout session creation. Stripe's API is itself rate-limited,
+  // but we don't want a malicious client creating sessions in a loop to
+  // enumerate stolen cards (Apple 5.1.1 / PCI consideration).
+  "stripe-checkout":  { perMinute: 5,   perDay: 50 },
+  // GDPR data export. Expensive to compute (multi-table scan) and a vector
+  // for scraping a user's full history repeatedly. Users rarely need more
+  // than 1-2 exports ever.
+  "account-export":   { perMinute: 2,   perDay: 10 },
 };
 
 const limiters = new Map<string, Ratelimit>();
@@ -164,4 +185,38 @@ export function rateLimitResponse(res: RateLimitResult): Response {
       "X-RateLimit-Remaining": String(res.remaining),
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Server-action variant
+// ---------------------------------------------------------------------------
+// Server Actions don't receive a `Request` object the way route handlers do,
+// so we read headers via next/headers and compose the identifier ourselves.
+// Callers pass the authenticated userId when they have one (strongly
+// preferred — an IP-based bucket is the last resort because a store's
+// public Wi-Fi can shove 50 shoppers behind one NAT).
+
+import { headers } from "next/headers";
+
+/**
+ * Server-action-friendly rate-limit check. Returns the same shape as
+ * `checkRate`. Prefers `userId` as the identifier; falls back to the
+ * request's X-Forwarded-For / cf-connecting-ip; falls back to "anon".
+ */
+export async function checkRateForServerAction(
+  name: LimiterName,
+  userId: string | null,
+): Promise<RateLimitResult> {
+  let identifier: string;
+  if (userId) {
+    identifier = `u:${userId}`;
+  } else {
+    const h = await headers();
+    const xff = h.get("x-forwarded-for");
+    const cf = h.get("cf-connecting-ip");
+    if (xff) identifier = `ip:${xff.split(",")[0].trim()}`;
+    else if (cf) identifier = `ip:${cf}`;
+    else identifier = "anon";
+  }
+  return checkRate(name, identifier);
 }

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { askShopper, type ChatMessage } from "./actions";
+import { AIDisclaimer } from "@/components/AIDisclaimer";
 
 const PROMPTS = [
   "I need a wine for tonight's dinner",
@@ -94,7 +95,7 @@ export function ShopperChat({
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
           >
             <div
               className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
@@ -105,6 +106,9 @@ export function ShopperChat({
             >
               <p className="whitespace-pre-wrap">{m.content}</p>
             </div>
+            {m.role === "assistant" && (
+              <AIDisclaimer variant="footnote" className="mt-1 ml-2" />
+            )}
           </div>
         ))}
         {sending && (

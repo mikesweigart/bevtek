@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { enrichProduct } from "@/lib/enrichment/enrichProduct";
 import type { ProductCore } from "@/lib/enrichment/types";
+import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 // Enrichment does real network IO (OFF + Claude), so give it room.
@@ -32,6 +33,12 @@ export async function POST(req: Request) {
   if (!auth.user) {
     return NextResponse.json({ error: "not signed in" }, { status: 401 });
   }
+
+  // Rate-limit by user. Each call here fans out to OpenFoodFacts + Claude;
+  // a runaway client in a loop blows through both quotas. Auth is already
+  // required above, so the id is always available.
+  const rl = await checkRate("inventory-enrich", identifyRequest(req, auth.user.id));
+  if (!rl.success) return rateLimitResponse(rl);
 
   let body: Body;
   try {

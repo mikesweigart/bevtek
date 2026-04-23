@@ -82,6 +82,7 @@ export default async function DashboardPage() {
     recentProgress,
     lowStock,
     outOfStockCount,
+    photoNeedsCount,
   ] = await Promise.all([
     supabase.from("inventory").select("*", { count: "exact", head: true }),
     supabase
@@ -131,7 +132,15 @@ export default async function DashboardPage() {
       .eq("store_id", p.store_id)
       .eq("is_active", true)
       .eq("stock_qty", 0),
+    // Update Inventory queue: how many products this store carries still
+    // need a catalog image. Drives the dashboard call-to-action card below.
+    // (The view name stayed `catalog_products_needing_photos` — renaming
+    // the SQL object would churn a migration for no user-visible gain.)
+    supabase
+      .from("catalog_products_needing_photos")
+      .select("*", { count: "exact", head: true }),
   ]);
+  const photoQueueCount = photoNeedsCount.count ?? 0;
 
   const store = {
     slug: slug ?? undefined,
@@ -406,6 +415,33 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </section>
+
+      {photoQueueCount > 0 && (
+        <section className="rounded-2xl border border-[color:var(--color-border)] bg-gradient-to-br from-amber-50/50 to-white p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
+          <div className="shrink-0 w-16 h-16 rounded-full bg-[color:var(--color-gold)]/10 flex items-center justify-center text-3xl">
+            📸
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+              Update Inventory
+            </p>
+            <h2 className="text-xl font-semibold tracking-tight mt-1">
+              {photoQueueCount.toLocaleString()} products need photos
+            </h2>
+            <p className="text-sm text-[color:var(--color-muted)] mt-1 max-w-lg">
+              Snap a quick photo of each product from your phone — and soon,
+              add descriptions, tasting notes, and reviews in the same flow.
+              Shared across every BevTek store carrying the same SKU.
+            </p>
+          </div>
+          <Link
+            href="/update-inventory"
+            className="shrink-0 inline-flex items-center rounded-md px-5 py-2.5 text-sm font-semibold text-white bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)]"
+          >
+            Start session →
+          </Link>
+        </section>
+      )}
 
       <section>
         <h2 className="text-sm font-medium tracking-widest uppercase text-[color:var(--color-muted)] mb-4">

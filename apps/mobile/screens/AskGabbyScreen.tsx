@@ -17,6 +17,7 @@ import { colors } from "../lib/theme";
 import GuidedFlow from "../components/GuidedFlow";
 import { prepareForSpeech } from "../lib/voiceSafety";
 import { HandoffModal } from "../components/HandoffModal";
+import { AIDisclaimer } from "../components/AIDisclaimer";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -313,15 +314,23 @@ export default function AskGabbyScreen() {
                 {m.content}
               </Text>
               {m.role === "assistant" && (
-                <TouchableOpacity
-                  onPress={() => toggleSpeak(i, m.content)}
-                  style={styles.speakBtn}
-                  hitSlop={8}
-                >
-                  <Text style={styles.speakText}>
-                    {speakingIdx === i ? "■ Stop" : "🔊 Listen"}
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    onPress={() => toggleSpeak(i, m.content)}
+                    style={styles.speakBtn}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.speakText}>
+                      {speakingIdx === i ? "■ Stop" : "🔊 Listen"}
+                    </Text>
+                  </TouchableOpacity>
+                  {/*
+                   * Per-message AI badge. Footnote variant so it's a
+                   * visual tell, not a wall of text — shoppers learn
+                   * "that italic line means AI generated this."
+                   */}
+                  <AIDisclaimer variant="footnote" style={{ marginTop: 6 }} />
+                </>
               )}
             </View>
           </View>

@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
+import { AIDisclaimer } from "@/components/AIDisclaimer";
 
 // Owner-facing feed of real Gabby chats. Groups by session_id so you see
 // each customer's thread, not isolated one-liners. Also surfaces the top
@@ -77,13 +78,20 @@ export default async function ConversationsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="space-y-3">
         <h1 className="text-2xl font-semibold tracking-tight">
           Gabby Conversations
         </h1>
-        <p className="text-sm text-[color:var(--color-muted)] mt-1">
+        <p className="text-sm text-[color:var(--color-muted)]">
           Every customer chat with Gabby, in your store&rsquo;s voice.
         </p>
+        {/*
+         * Owner-facing banner: remind the reviewer that these are AI
+         * replies. Matters when staff are auditing Gabby output for
+         * accuracy — "this wine pairing is wrong" should be reported,
+         * not shrug-accepted.
+         */}
+        <AIDisclaimer variant="banner" />
       </div>
 
       {rows.length === 0 ? (

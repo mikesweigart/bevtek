@@ -12,6 +12,7 @@ const TABS = [
   { href: "/texts", label: "Texts", manager: true },
   { href: "/trainer", label: "Trainer", manager: false },
   { href: "/inventory", label: "Inventory", manager: false },
+  { href: "/update-inventory", label: "Update Inventory", manager: false },
   { href: "/promotions", label: "Promotions", manager: true },
   { href: "/analytics", label: "Analytics", manager: true },
   { href: "/billing", label: "Billing", manager: true },

@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/retention",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/retry-moderations",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/korona-sync",
+      "schedule": "0 4 * * *"
     }
   ]
 }
