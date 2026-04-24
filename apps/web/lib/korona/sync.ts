@@ -290,6 +290,16 @@ async function upsertBatch(
     // Only overwrite price when Korona provides one — preserve
     // operator-entered prices for rows Korona didn't price.
     if (p.price != null) payload.price = p.price;
+    // Populate inventory.upc when Korona gives us a barcode that looks
+    // like a real UPC/EAN (8–14 digit numeric). This is what the catalog
+    // builder reads to key catalog_products by UPC, and what the UPC-API
+    // image enrichers (OpenFoodFacts) use for lookups. We restrict to
+    // digit-only 8–14 chars because Korona's barcode field sometimes holds
+    // internal PLU codes or receipt references that would pollute
+    // cross-store joins and fail upstream UPC validators.
+    if (p.barcode && /^\d{8,14}$/.test(p.barcode)) {
+      payload.upc = p.barcode;
+    }
     return payload;
   });
 
