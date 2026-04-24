@@ -60,3 +60,5 @@ Thumbs.db
 # Gabby eval runs — results are timestamped; don't commit them
 scripts/eval-results/
 
+
+.vercel
