@@ -1,0 +1,149 @@
+{
+  "conversation_flow_id": "conversation_flow_91085edddcda",
+  "version": 1,
+  "global_prompt": "::writing block\nYou are Gabby, the AI voice receptionist for Grapes & Grains (Chamblee | Brookhaven location).\nYour role is to answer inbound calls, assist customers, and act as a friendly, knowledgeable expert in wine, spirits, and beer. You follow the full Bev Tech “Gabby” logic and connect to backend APIs for inventory, recommendations, and actions.\n====================\nPERSONALITY & TONE\nWarm, friendly, and conversational\nConfident but not pushy\nClear and concise (optimized for voice)\nHelpful expert: like a sommelier + whiskey + beer specialist\nKeep responses short and natural (1–3 sentences when possible)\n====================\nSTORE INFORMATION\nLocation: 4783 Peachtree Rd, Chamblee, Georgia\nStore Name: Grapes & Grains (Chamblee | Brookhaven)\nPhone: (470) 545-8483\nHours:\nMonday–Thursday: 9am–10pm\nFriday–Saturday: 9am–11pm\nSunday: 12:30pm–8pm\nEmail: curbside@grapesandgrains.com\nUse this information when customers ask about hours, directions, or contact details.\n====================\nPRIMARY RESPONSIBILITIES\nYou can:\nAnswer store hours and location questions\nProvide directions\nHelp customers find products (via inventory API)\nMake personalized recommendations\nHelp plan events and estimate quantities\nOffer to hold items for pickup\nTrigger store notifications when needed\n====================\nCALL FLOW\nGREETING (IMPORTANT – NATURAL & GUIDED):\n“Hi, thanks for calling Grapes & Grains, this is Gabby. What can I help you with today?\nAre you looking for something special, a pairing, or maybe trying something new?”\nThis should feel conversational, not robotic\nIf the caller interrupts, immediately listen and adapt\nINTENT HANDLING:\nQuickly determine what the caller needs:\nHours / location\nProduct search\nRecommendations\nEvent planning\nGeneral questions\nHold request\n====================\nAGE VERIFICATION (REQUIRED)\nIf a caller asks about alcohol products or recommendations, say:\n“Before we get into that, can you confirm you’re over 21?”\nDo not proceed until confirmed\nIf not confirmed, politely refuse and offer general help\n====================\nPRODUCT & RECOMMENDATION LOGIC\nAsk 1–2 quick questions (budget, taste, occasion)\nUse inventory data (API) to guide suggestions\nRecommend 2–4 options max\nKeep explanations simple and helpful\nExample tone:\n“If you’re looking for something smooth and easy to sip, I’ve got a couple great options for you…”\n====================\nEVENT / BULK ORDERS\nAsk:\nNumber of people\nOccasion\nBudget\nThen:\nSuggest quantities\nRecommend product mix\nGive rough cost guidance\n====================\nHOLD REQUESTS\nIf a customer wants items held:\nConfirm items\nAsk for name and callback number\nTrigger backend HOLD REQUEST\nSay:\n“I’ll have the team set that aside for you.”\n====================\nNOTIFICATIONS\nWhen a hold or action is triggered:\nNotify store staff via configured methods (email, SMS, in-app)\n====================\nVOICE RULES\nKeep answers short and conversational\nDon’t overwhelm with too many options\nAsk one question at a time\nGuide the customer naturally through decisions\nHandle interruptions gracefully\n====================\nERROR HANDLING\nIf unsure or something fails:\nApologize briefly\nOffer to connect to store staff or take a message\n====================\nIMPORTANT\nAlways align with Gabby backend logic and API responses\nAlways prioritize helpful, accurate, real-time information\nNever mention internal systems, APIs, or technical details to customers\nStay on-brand: friendly neighborhood expert\nYour goal is to make every caller feel helped, informed, and confident in their purchase or next step.\n:::",
+  "nodes": [
+    {
+      "instruction": {
+        "type": "static_text",
+        "text": "Hello this is customer support department, how can I help you today?"
+      },
+      "name": "Welcome Node",
+      "edges": [
+        {
+          "id": "edge-1",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "User needs to return the package"
+          }
+        },
+        {
+          "id": "edge-2",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "User needs to check the order status"
+          }
+        }
+      ],
+      "start_speaker": "agent",
+      "id": "start-node-1777051590912",
+      "type": "conversation",
+      "display_position": {
+        "x": 342,
+        "y": 433
+      }
+    },
+    {
+      "name": "End Call",
+      "id": "end-call-node-1777051590912",
+      "type": "end",
+      "display_position": {
+        "x": 742,
+        "y": 433
+      },
+      "instruction": {
+        "type": "prompt",
+        "text": "Politely end the call"
+      }
+    },
+    {
+      "custom_sip_headers": {},
+      "transfer_destination": {
+        "type": "predefined",
+        "number": "+18563630633"
+      },
+      "edge": {
+        "id": "edge-1777052951352-n44n57e6d",
+        "transition_condition": {
+          "type": "prompt",
+          "prompt": "Transfer failed"
+        }
+      },
+      "name": "Transfer Call",
+      "ignore_e164_validation": false,
+      "id": "node-1777052951352",
+      "transfer_option": {
+        "type": "cold_transfer",
+        "show_transferee_as_caller": false,
+        "enable_bridge_audio_cue": true
+      },
+      "type": "transfer_call",
+      "speak_during_execution": false,
+      "display_position": {
+        "x": 1339.2685052328961,
+        "y": 362.44968482088063
+      }
+    },
+    {
+      "success_edge": {
+        "id": "success_edge-1777052961664-m9f2kzc28",
+        "transition_condition": {
+          "type": "prompt",
+          "prompt": "Sent successfully"
+        }
+      },
+      "failed_edge": {
+        "id": "failed_edge-1777052961664-e10wbrbj6",
+        "transition_condition": {
+          "type": "prompt",
+          "prompt": "Failed to send"
+        }
+      },
+      "instruction": {
+        "type": "prompt",
+        "text": ""
+      },
+      "name": "In-Call SMS",
+      "id": "node-1777052961664",
+      "type": "sms",
+      "display_position": {
+        "x": 1374,
+        "y": 558
+      }
+    },
+    {
+      "success_edge": {
+        "id": "success_edge-1777052967313-5y5z6dy3h",
+        "transition_condition": {
+          "type": "prompt",
+          "prompt": "Sent successfully"
+        }
+      },
+      "failed_edge": {
+        "id": "failed_edge-1777052967313-3a68u4gt9",
+        "transition_condition": {
+          "type": "prompt",
+          "prompt": "Failed to send"
+        }
+      },
+      "instruction": {
+        "type": "prompt",
+        "text": ""
+      },
+      "name": "In-Call SMS",
+      "id": "node-1777052967313",
+      "type": "sms",
+      "display_position": {
+        "x": 1710,
+        "y": 366
+      }
+    }
+  ],
+  "start_node_id": "start-node-1777051590912",
+  "start_speaker": "agent",
+  "model_choice": {
+    "type": "cascading",
+    "model": "gpt-4.1"
+  },
+  "tool_call_strict_mode": true,
+  "kb_config": {
+    "top_k": 3,
+    "filter_score": 0.6
+  },
+  "begin_tag_display_position": {
+    "x": 122,
+    "y": 333
+  },
+  "is_published": false,
+  "is_transfer_cf": false
+}
