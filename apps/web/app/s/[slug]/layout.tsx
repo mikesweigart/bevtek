@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { createClient } from "@/utils/supabase/server";
 
 type Store = {
@@ -28,6 +28,16 @@ export async function generateMetadata({
   return {
     title: store.name,
     description: `Shop ${store.name} online.`,
+    // Per-store manifest so the install prompt installs THIS store as
+    // its own PWA — branded icon, name, and scope=/s/${slug}/. Without
+    // this override the shopper would see the merchant-portal manifest
+    // (BevTek) since it's set on the root layout.
+    manifest: `/s/${slug}/manifest.webmanifest`,
+    appleWebApp: {
+      capable: true,
+      title: store.name,
+      statusBarStyle: "default",
+    },
     openGraph: {
       title: store.name,
       description: `Shop ${store.name} online.`,
@@ -35,6 +45,17 @@ export async function generateMetadata({
     },
   };
 }
+
+// Theme color belongs in the Viewport export per Next.js 15+ (putting
+// it in Metadata is a deprecation warning). Static value is fine —
+// every store currently uses the BevTek gold; once stores get a
+// brand_color column we'll switch to generateViewport.
+export const viewport: Viewport = {
+  themeColor: "#c8984e",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export default async function ShopperLayout({
   children,

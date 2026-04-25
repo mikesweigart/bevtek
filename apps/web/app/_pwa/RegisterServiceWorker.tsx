@@ -25,6 +25,13 @@ export function RegisterServiceWorker() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
+    // Don't register the merchant-portal SW (scope=/) on shopper pages.
+    // /s/[slug] gets its own per-store PWA branding via a different
+    // manifest, and a future per-shopper SW (Phase C) will need to
+    // own its own scope. Letting the root SW take over /s/* would
+    // bind the shopper PWA to merchant-side caching rules.
+    if (window.location.pathname.startsWith("/s/")) return;
+
     // Defer registration until after first paint so we don't compete
     // for the main thread during hydration. `requestIdleCallback`
     // isn't in Safari, so fall back to a small setTimeout.
