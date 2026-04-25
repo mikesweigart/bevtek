@@ -83,7 +83,37 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      // Service worker needs its own header set:
+      //   - Strict no-cache so a new /sw.js deploy is picked up on the
+      //     next page load (without this, browsers cache /sw.js for up
+      //     to 24 hours and stale workers haunt installed PWAs).
+      //   - Tight CSP that's just `'self'` — the SW only runs our own
+      //     code; tightening here is defence in depth even though the
+      //     global CSP also covers it.
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          {
+            key: "Service-Worker-Allowed",
+            value: "/",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self'",
+          },
+        ],
+      },
+    ];
   },
   async redirects() {
     // /photo-mode → /update-inventory (2026-04-23 rename). Permanent (308)
