@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata, Viewport } from "next";
 import { createClient } from "@/utils/supabase/server";
+import { InstallPrompt } from "./InstallPrompt";
 
 type Store = {
   id: string;
@@ -76,7 +77,17 @@ export default async function ShopperLayout({
   if (!store) notFound();
 
   return (
-    <div className="flex-1 flex flex-col">
+    // pt-[env(safe-area-inset-top)] pushes content below the iPhone
+    // notch when launched as an installed PWA (viewportFit=cover above
+    // makes the page draw under the system UI). Harmless on desktop /
+    // non-notched devices — env() resolves to 0 there.
+    <div
+      className="flex-1 flex flex-col"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <header className="border-b border-[color:var(--color-border)]">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link
@@ -104,6 +115,7 @@ export default async function ShopperLayout({
           </span>
         </div>
       </header>
+      <InstallPrompt storeName={store.name} storeSlug={store.slug} />
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 py-6 sm:py-10">
         {children}
       </main>

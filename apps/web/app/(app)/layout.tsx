@@ -42,7 +42,8 @@ export default async function AppLayout({
   // via PostgREST embedded selects. If the organization_members table is
   // missing (pre-multi_store_foundation migration), the query errors and
   // we fall back to a single-store list — layout still renders.
-  let switcherStores: SwitcherStore[] = [];
+  // const-safe: we only mutate via .push, never rebind.
+  const switcherStores: SwitcherStore[] = [];
   try {
     const { data: memberships, error } = await supabase
       .from("organization_members")
@@ -84,7 +85,17 @@ export default async function AppLayout({
   const isManager = role === "owner" || role === "manager";
 
   return (
-    <div className="flex-1 flex flex-col">
+    // Safe-area inset padding lets us draw under the iPhone notch when
+    // launched as an installed PWA (root layout's viewport.viewportFit
+    // is "cover"). Resolves to 0 on desktop and non-notched devices,
+    // so this is a no-op outside standalone iOS.
+    <div
+      className="flex-1 flex flex-col"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <header className="border-b border-[color:var(--color-border)]">
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
