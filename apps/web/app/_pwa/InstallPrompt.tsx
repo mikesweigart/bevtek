@@ -12,7 +12,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const DISMISS_KEY_PREFIX = "bevtek:install-dismissed:";
+const DISMISS_STORAGE_PREFIX = "bevtek:install-dismissed:";
 
 type EnvSnapshot = {
   isStandalone: boolean;
@@ -27,7 +27,7 @@ function getServerSnapshot(): EnvSnapshot {
   return { isStandalone: true, isIOS: false, dismissed: true };
 }
 
-function envSnapshotFor(slug: string) {
+function envSnapshotFor(dismissKey: string) {
   return function getSnapshot(): EnvSnapshot {
     if (typeof window === "undefined") return getServerSnapshot();
     const isStandalone =
@@ -39,45 +39,58 @@ function envSnapshotFor(slug: string) {
       /iPad|iPhone|iPod/.test(navigator.userAgent) &&
       !(window as unknown as { MSStream?: unknown }).MSStream;
     const dismissed = !!window.localStorage.getItem(
-      `${DISMISS_KEY_PREFIX}${slug}`,
+      `${DISMISS_STORAGE_PREFIX}${dismissKey}`,
     );
     return { isStandalone, isIOS, dismissed };
   };
 }
 
-// We don't actually subscribe to anything live (standalone-mode and
-// iOS-ness don't change mid-session). Returning a no-op unsubscribe
-// is the documented way to use useSyncExternalStore for one-shot
-// browser reads — the snapshot is captured at mount and stays stable.
+// We don't subscribe to anything live — standalone-mode and iOS-ness
+// don't change mid-session. Returning a no-op unsubscribe is the
+// documented way to use useSyncExternalStore for one-shot browser
+// reads — the snapshot is captured at mount and stays stable.
 function noopSubscribe() {
   return () => {};
 }
 
 /**
- * Shopper-facing "Install [Store] on your phone" banner. Shown on
- * every /s/[slug]/* page until the user either:
- *   - taps Install (Chromium: triggers the native install prompt;
- *     iOS: opens an instruction sheet with the share-icon hint),
- *   - dismisses it (per-store localStorage key), or
- *   - the app is already running standalone.
+ * Generic "Install [appName] on your phone" banner. Used in two
+ * places today:
+ *   - /s/[slug]/* (shopper PWA, per-store name + dismiss key)
+ *   - /(app)/* (merchant portal, "BevTek" + a "portal" dismiss key)
  *
- * Architecture:
- *   - useSyncExternalStore reads browser state (standalone, iOS,
- *     localStorage dismissal) without an effect — that's the React 19
- *     prescribed pattern for "browser values read during render".
- *   - useEffect is reserved for the one piece of *live* state we care
- *     about: the beforeinstallprompt event we capture from Chromium.
+ * Behaviour:
+ *   - Already running standalone (display-mode OR iOS navigator.standalone):
+ *     never renders.
+ *   - Previously dismissed (per-key localStorage flag): hidden until
+ *     the user clears site data or we change the key.
+ *   - Chromium: captures beforeinstallprompt and triggers the native
+ *     install dialog when the user taps Install.
+ *   - iOS Safari: opens an instruction sheet (share icon → Add to
+ *     Home Screen). iOS has no programmatic install API.
+ *
+ * Architecture note:
+ *   - useSyncExternalStore reads browser state without an effect — that's
+ *     React 19's prescribed pattern for "browser values read during render"
+ *     and avoids the cascading-render warning.
+ *   - useEffect is reserved for the live beforeinstallprompt listener.
  */
 export function InstallPrompt({
-  storeName,
-  storeSlug,
+  appName,
+  dismissKey,
+  /**
+   * Optional copy override. Default is fine for both callers; pass a
+   * custom subline if you want different wording per surface.
+   */
+  subline = "on your phone for one-tap access.",
 }: {
-  storeName: string;
-  storeSlug: string;
+  appName: string;
+  dismissKey: string;
+  subline?: string;
 }) {
   const env = useSyncExternalStore(
     noopSubscribe,
-    envSnapshotFor(storeSlug),
+    envSnapshotFor(dismissKey),
     getServerSnapshot,
   );
   const [installEvent, setInstallEvent] =
@@ -110,7 +123,7 @@ export function InstallPrompt({
   function dismiss() {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(
-        `${DISMISS_KEY_PREFIX}${storeSlug}`,
+        `${DISMISS_STORAGE_PREFIX}${dismissKey}`,
         String(Date.now()),
       );
     }
@@ -134,12 +147,10 @@ export function InstallPrompt({
   return (
     <>
       <div className="border-b border-[color:var(--color-border)] bg-[color:var(--color-gold)]/5">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-2.5 flex items-center gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-2.5 flex items-center gap-3">
           <span className="text-sm">
-            <span className="font-medium">Install {storeName}</span>{" "}
-            <span className="text-[color:var(--color-muted)]">
-              on your phone for one-tap access.
-            </span>
+            <span className="font-medium">Install {appName}</span>{" "}
+            <span className="text-[color:var(--color-muted)]">{subline}</span>
           </span>
           <span className="ml-auto flex items-center gap-2">
             <button
@@ -171,7 +182,7 @@ export function InstallPrompt({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-base font-semibold">
-              Install {storeName}
+              Install {appName}
             </h3>
             <ol className="space-y-2 text-sm text-[color:var(--color-muted)]">
               <li>

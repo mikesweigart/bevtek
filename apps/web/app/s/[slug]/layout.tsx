@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata, Viewport } from "next";
 import { createClient } from "@/utils/supabase/server";
-import { InstallPrompt } from "./InstallPrompt";
+import { InstallPrompt } from "../../_pwa/InstallPrompt";
 
 type Store = {
   id: string;
@@ -115,7 +115,7 @@ export default async function ShopperLayout({
           </span>
         </div>
       </header>
-      <InstallPrompt storeName={store.name} storeSlug={store.slug} />
+      <InstallPrompt appName={store.name} dismissKey={store.slug} />
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-6 py-6 sm:py-10">
         {children}
       </main>

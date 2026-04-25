@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { NavTabs } from "./NavTabs";
 import { StoreSwitcher, type SwitcherStore } from "./StoreSwitcher";
+import { InstallPrompt } from "../_pwa/InstallPrompt";
 
 type MembershipRow = {
   role: string;
@@ -129,6 +130,14 @@ export default async function AppLayout({
           <NavTabs isManager={isManager} />
         </div>
       </header>
+      {/* Install prompt for staff. "portal" dismiss key is separate from
+          the per-shopper keys so dismissing your shop's banner doesn't
+          dismiss the merchant one and vice versa. */}
+      <InstallPrompt
+        appName="BevTek"
+        dismissKey="portal"
+        subline="for one-tap dashboard, calls, and inventory access."
+      />
       <main className="flex-1 mx-auto w-full max-w-6xl px-6 py-10">
         {children}
       </main>
