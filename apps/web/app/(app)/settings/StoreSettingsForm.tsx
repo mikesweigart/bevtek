@@ -6,6 +6,8 @@ import {
   type SettingsState,
 } from "./actions";
 import { ImageUpload } from "@/components/ImageUpload";
+import { HoursEditor } from "./HoursEditor";
+import type { HoursJson } from "@/lib/store/hours";
 
 const initial: SettingsState = { error: null, saved: false };
 
@@ -24,6 +26,13 @@ export function StoreSettingsForm({
     phone: string | null;
     timezone: string;
     logo_url: string | null;
+    address_line_1: string | null;
+    address_line_2: string | null;
+    city: string | null;
+    region: string | null;
+    postal_code: string | null;
+    country_code: string | null;
+    hours_json: HoursJson;
   };
   storeId: string;
   shopperUrl: string | null;
@@ -118,6 +127,105 @@ export function StoreSettingsForm({
             <option value="Pacific/Honolulu">Hawaii</option>
           </select>
         </label>
+      </div>
+
+      <div className="space-y-3 pt-2">
+        <div>
+          <h3 className="text-sm font-medium">Address</h3>
+          <p className="text-xs text-[color:var(--color-muted)]">
+            Used for sales-tax lookup and shown on the Shopper landing page.
+          </p>
+        </div>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-[color:var(--color-muted)]">
+            Street address
+          </span>
+          <input
+            name="address_line_1"
+            disabled={!canEdit}
+            defaultValue={initialValues.address_line_1 ?? ""}
+            placeholder="123 Main St"
+            className={inputCls}
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-[color:var(--color-muted)]">
+            Suite / unit (optional)
+          </span>
+          <input
+            name="address_line_2"
+            disabled={!canEdit}
+            defaultValue={initialValues.address_line_2 ?? ""}
+            className={inputCls}
+          />
+        </label>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <label className="block space-y-1.5 sm:col-span-2">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              City
+            </span>
+            <input
+              name="city"
+              disabled={!canEdit}
+              defaultValue={initialValues.city ?? ""}
+              className={inputCls}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              State
+            </span>
+            <input
+              name="region"
+              disabled={!canEdit}
+              defaultValue={initialValues.region ?? ""}
+              placeholder="GA"
+              maxLength={3}
+              className={`${inputCls} uppercase`}
+            />
+          </label>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              ZIP / postal code
+            </span>
+            <input
+              name="postal_code"
+              disabled={!canEdit}
+              defaultValue={initialValues.postal_code ?? ""}
+              className={inputCls}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              Country
+            </span>
+            <select
+              name="country_code"
+              disabled={!canEdit}
+              defaultValue={initialValues.country_code ?? "US"}
+              className={inputCls}
+            >
+              <option value="US">United States</option>
+              <option value="CA">Canada</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-2">
+        <div>
+          <h3 className="text-sm font-medium">Hours</h3>
+          <p className="text-xs text-[color:var(--color-muted)]">
+            Gabby tells callers these hours and uses them to decide when to
+            offer same-day pickup.
+          </p>
+        </div>
+        <HoursEditor
+          initial={initialValues.hours_json}
+          disabled={!canEdit}
+        />
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

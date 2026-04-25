@@ -6,6 +6,8 @@ import {
   markFailed,
   markHandled,
 } from "@/lib/webhooks/idempotency";
+import { sendSms } from "@/lib/sms/sendblue";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Retell AI posts call lifecycle events here.
 // Retell docs: https://docs.retellai.com/api-references/webhook
@@ -47,6 +49,79 @@ type RetellPayload = {
 function toIso(ms: number | undefined): string | null {
   if (!ms || !Number.isFinite(ms)) return null;
   return new Date(ms).toISOString();
+}
+
+// ---------------------------------------------------------------------------
+// Post-call SMS summary
+// ---------------------------------------------------------------------------
+// When Retell finishes analysis of a call, we may want to text the caller
+// a one-paragraph summary ("Thanks for calling Grapes & Grains! We talked
+// about Buffalo Trace — we have it in stock for $34. Reply STOP to opt
+// out."). This is entirely opt-in:
+//   1. The caller must have an active sms_consent row (store_id, phone).
+//      We never auto-opt a caller just because they called.
+//   2. The store must have a sendblue_number configured and outbound
+//      Sendblue credentials present (checked inside sendSms).
+//   3. The call must have produced a summary AND been long enough to be
+//      worth recapping (>= 30 seconds — quick hang-ups, wrong numbers,
+//      and IVR bounces are not worth a text).
+//
+// This is fire-and-forget from the webhook's perspective: any failure is
+// logged to Sentry but the webhook response stays 200 so Retell doesn't
+// retry (which would spam the customer).
+async function maybeSendPostCallSummary(
+  supabase: SupabaseClient,
+  call: NonNullable<RetellPayload["call"]>,
+): Promise<void> {
+  const fromNumber = call.from_number;
+  const summary = (call.call_summary ?? "").trim();
+  const durationSec = call.duration_ms ? Math.round(call.duration_ms / 1000) : 0;
+
+  if (!fromNumber || !summary) return;
+  if (durationSec > 0 && durationSec < 30) return;
+
+  // Find the store this call belongs to. We use to_number → stores, same
+  // way search-inventory resolves the store, because the webhook already
+  // validated the secret → store match (rows are inserted scoped).
+  // Fetching via the call_logs entry we just wrote would work too, but
+  // adds a round-trip and a race with the insert.
+  const toNumber = call.to_number;
+  if (!toNumber) return;
+
+  const { data: storeData } = await supabase
+    .from("stores")
+    .select("id, name")
+    .eq("retell_phone_number", toNumber)
+    .maybeSingle();
+  const store = storeData as { id: string; name: string } | null;
+  if (!store) return;
+
+  // Trim the Retell-generated summary to ~300 chars so the SMS fits
+  // comfortably (staying under 4 iMessage segments). Retell's default
+  // summary is usually 1–2 sentences already.
+  const trimmed = summary.length > 300 ? `${summary.slice(0, 297)}…` : summary;
+  const body = `Thanks for calling ${store.name}! ${trimmed}\n\nReply STOP to opt out.`;
+
+  const result = await sendSms({
+    supabase,
+    storeId: store.id,
+    toNumber: fromNumber,
+    message: body,
+    // Require consent: calling doesn't imply SMS opt-in, and A2P 10DLC
+    // treats these as "informational" which still needs prior opt-in.
+    requireConsent: true,
+    purpose: "retell_call_summary",
+  });
+
+  if (!result.ok && result.reason !== "no_consent" && result.reason !== "store_not_configured" && result.reason !== "sendblue_not_configured") {
+    // Legitimate failure path — surface to Sentry for triage. Silent
+    // skips (no consent, no config) are expected and noisy.
+    Sentry.captureMessage("retell post-call summary SMS failed", {
+      level: "warning",
+      tags: { route: "retell-webhook", store_id: store.id },
+      extra: { reason: result.reason, detail: result.detail },
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -109,6 +184,20 @@ export async function POST(request: NextRequest) {
     }
 
     await markHandled("retell", eventId);
+
+    // Fire-and-forget post-call SMS summary. Only runs for the analysis
+    // event — that's when call_summary is populated. Any other event
+    // (call_started, call_ended with no summary yet) is a silent no-op
+    // inside the helper. Never block the webhook response: Retell will
+    // retry on non-200, which could spam the customer.
+    if (body.event === "call_analyzed" && call.call_summary) {
+      void maybeSendPostCallSummary(supabase, call).catch((e) => {
+        Sentry.captureException(e, {
+          tags: { route: "retell-webhook", step: "post_call_sms" },
+        });
+      });
+    }
+
     return NextResponse.json({ ok: true, call_log_id: data });
   } catch (e) {
     const msg = (e as Error)?.message ?? "unknown";

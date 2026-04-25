@@ -24,7 +24,7 @@
  */
 
 import process from "node:process";
-import { runCityHivePipeline, parseArgs, type CityHiveConfig } from "./lib/cityhive-scraper";
+import { runCityHivePipeline, parseArgs, type CityHiveConfig } from "../lib/cityhive-scraper";
 
 const CONFIG: CityHiveConfig = {
   retailerSlug: "grapes-and-grains",

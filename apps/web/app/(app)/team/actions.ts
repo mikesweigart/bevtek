@@ -108,3 +108,56 @@ export async function revokeInviteAction(formData: FormData) {
   });
   revalidatePath("/team");
 }
+
+export type RemoveMemberState = { error: string | null; removed: boolean };
+
+/**
+ * Remove a team member. Calls the SECURITY DEFINER RPC
+ * public.remove_team_member which enforces:
+ *   - actor must be authenticated
+ *   - actor can't remove themselves
+ *   - actor must be owner/manager of the target's store
+ *   - can't remove the last owner of a store
+ *
+ * The RPC also writes to user_removal_log for audit. We additionally log
+ * via logAudit so the generic audit stream picks it up alongside other
+ * team actions (invite/revoke). Belt-and-suspenders is fine here — the
+ * two logs serve different readers (user_removal_log for compliance,
+ * audit_log for debugging).
+ */
+export async function removeMemberAction(
+  _prev: RemoveMemberState,
+  formData: FormData,
+): Promise<RemoveMemberState> {
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim() || null;
+  if (!targetUserId) {
+    return { error: "Missing user id.", removed: false };
+  }
+
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { error: "Not authenticated.", removed: false };
+
+  const { error } = await supabase.rpc("remove_team_member", {
+    p_target_user_id: targetUserId,
+    p_reason: reason,
+  });
+
+  if (error) {
+    // The RPC raises with human-readable messages (cannot remove yourself,
+    // not authorized, cannot remove the last owner). Pass them straight
+    // through to the UI rather than replacing with a generic "failed."
+    return { error: error.message, removed: false };
+  }
+
+  await logAudit({
+    action: "team.member.remove",
+    actor: { id: auth.user.id, email: auth.user.email ?? null },
+    target: { type: "user", id: targetUserId },
+    metadata: { reason },
+  });
+
+  revalidatePath("/team");
+  return { error: null, removed: true };
+}

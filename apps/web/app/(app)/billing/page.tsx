@@ -71,7 +71,17 @@ const ADD_ONS = [
   { key: "modules", name: "Extra module pack", price: 49, unit: "/mo" },
 ];
 
-export default async function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  // Next 16 passes searchParams as a Promise; await it before reading.
+  // The trial_expired flag is stamped by utils/supabase/proxy.ts when it
+  // redirects a trial-expired user here.
+  searchParams: Promise<{ trial_expired?: string }>;
+}) {
+  const sp = await searchParams;
+  const trialExpired = sp.trial_expired === "1";
+
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
 
@@ -115,7 +125,18 @@ export default async function BillingPage() {
         </p>
       </div>
 
-      {!isOwner && (
+      {trialExpired && (
+        <div className="rounded-md border border-red-300 bg-red-50 text-red-900 p-4 text-sm">
+          <p className="font-semibold">Your free trial has ended.</p>
+          <p className="mt-1">
+            {isOwner
+              ? "Pick a plan below to keep using Megan. Your store data, team, and inventory are all preserved — nothing's been deleted."
+              : "Only the store owner can upgrade. Ask them to visit this page."}
+          </p>
+        </div>
+      )}
+
+      {!isOwner && !trialExpired && (
         <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm">
           Only the store owner can manage billing. Ask them to visit this page.
         </div>

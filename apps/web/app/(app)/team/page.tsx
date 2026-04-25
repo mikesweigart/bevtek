@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { InviteForm } from "./InviteForm";
 import { revokeInviteAction } from "./actions";
+import { RemoveMemberButton } from "./RemoveMemberButton";
 
 type UserRow = {
   id: string;
@@ -23,6 +24,18 @@ type InviteRow = {
 
 export default async function TeamPage() {
   const supabase = await createClient();
+
+  // Pull the viewer's identity + role so we can conditionally render
+  // the Remove column. Only owners and managers see it.
+  const { data: auth } = await supabase.auth.getUser();
+  const viewerId = auth.user?.id ?? null;
+  const { data: viewerProfile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", viewerId ?? "")
+    .maybeSingle();
+  const viewerRole = (viewerProfile as { role?: string } | null)?.role ?? null;
+  const canRemove = viewerRole === "owner" || viewerRole === "manager";
 
   const { data: users } = (await supabase
     .from("users")
@@ -66,6 +79,7 @@ export default async function TeamPage() {
                 <th className="text-left px-4 py-2 font-medium">Name</th>
                 <th className="text-left px-4 py-2 font-medium">Email</th>
                 <th className="text-left px-4 py-2 font-medium">Role</th>
+                {canRemove && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody>
@@ -74,6 +88,15 @@ export default async function TeamPage() {
                   <td className="px-4 py-2">{u.full_name ?? "—"}</td>
                   <td className="px-4 py-2">{u.email}</td>
                   <td className="px-4 py-2 capitalize">{u.role}</td>
+                  {canRemove && (
+                    <td className="px-4 py-2 text-right">
+                      <RemoveMemberButton
+                        userId={u.id}
+                        userEmail={u.email}
+                        isSelf={u.id === viewerId}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

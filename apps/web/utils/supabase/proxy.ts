@@ -95,5 +95,54 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Trial expiry enforcement.
+  //
+  // Any authenticated user on a trial plan whose trial_ends_at has passed
+  // gets routed to /billing with ?trial_expired=1. /billing is the one
+  // app-shell page they can still reach because they need it to upgrade.
+  // Non-trial plans (paid, grandfathered) are never gated.
+  //
+  // We deliberately skip:
+  //   - Public paths (already handled above)
+  //   - /billing and its children (so the upgrade flow works)
+  //   - /auth/signout (so they can log out if they've walked away)
+  //   - /settings (so an owner can still update email/profile while
+  //     deciding whether to upgrade — nondestructive)
+  //
+  // One extra PostgREST query per gated page load. At pilot scale (< 100
+  // stores) this is well under the latency budget. If it ever becomes
+  // measurable, cache trial_ends_at in a cookie stamped at login — it
+  // only changes on subscription events, which already clear cookies.
+  if (
+    user &&
+    !isPublicPath(pathname) &&
+    !pathname.startsWith("/billing") &&
+    !pathname.startsWith("/settings") &&
+    !pathname.startsWith("/auth/")
+  ) {
+    // Single-query join: users → stores so we don't double-round-trip.
+    // The cast is needed because PostgREST returns embedded rows as
+    // nested objects, which Supabase's generic typing can't infer.
+    const { data: trialData } = await supabase
+      .from("users")
+      .select("stores(plan, trial_ends_at)")
+      .eq("id", user.id)
+      .maybeSingle();
+    const storeInfo =
+      (trialData as { stores: { plan: string | null; trial_ends_at: string | null } | null } | null)
+        ?.stores ?? null;
+
+    if (
+      storeInfo?.plan === "trial" &&
+      storeInfo.trial_ends_at &&
+      new Date(storeInfo.trial_ends_at).getTime() < Date.now()
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/billing";
+      url.searchParams.set("trial_expired", "1");
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }

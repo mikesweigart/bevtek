@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { logAudit } from "@/lib/audit/log";
+import { hoursFromFormData } from "@/lib/store/hours";
 
 export type SettingsState = { error: string | null; saved: boolean };
 
@@ -16,6 +17,8 @@ const TIMEZONES = [
   "America/Anchorage",
   "Pacific/Honolulu",
 ];
+
+const COUNTRY_CODES = new Set(["US", "CA"]);
 
 function slugify(raw: string): string {
   return raw
@@ -43,9 +46,27 @@ export async function updateStoreSettingsAction(
   const timezone = String(formData.get("timezone") ?? "").trim();
   const logoUrl = normalizeImageUrl(String(formData.get("logo_url") ?? ""));
 
+  const addressLine1 = String(formData.get("address_line_1") ?? "").trim();
+  const addressLine2 = String(formData.get("address_line_2") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const region = String(formData.get("region") ?? "").trim().toUpperCase();
+  const postalCode = String(formData.get("postal_code") ?? "").trim();
+  const countryCodeRaw = String(formData.get("country_code") ?? "US").trim();
+  const countryCode = COUNTRY_CODES.has(countryCodeRaw) ? countryCodeRaw : "US";
+
+  const hoursJson = hoursFromFormData(formData);
+
   if (!name) return { error: "Store name is required.", saved: false };
   if (!TIMEZONES.includes(timezone)) {
     return { error: "Invalid timezone.", saved: false };
+  }
+  // Light region validation: 2-3 letters is what every US state / CA province
+  // uses. We tolerate blank (nothing required) but reject garbage like "Ga!".
+  if (region && !/^[A-Z]{2,3}$/.test(region)) {
+    return {
+      error: "State/region should be a 2–3 letter code (e.g. GA, CA).",
+      saved: false,
+    };
   }
 
   const slug = slugRaw ? slugify(slugRaw) : null;
@@ -79,6 +100,13 @@ export async function updateStoreSettingsAction(
       phone: phone || null,
       timezone,
       logo_url: logoUrl,
+      address_line_1: addressLine1 || null,
+      address_line_2: addressLine2 || null,
+      city: city || null,
+      region: region || null,
+      postal_code: postalCode || null,
+      country_code: countryCode,
+      hours_json: hoursJson,
     })
     .eq("id", p.store_id);
 
@@ -96,6 +124,8 @@ export async function updateStoreSettingsAction(
         phone: true,
         timezone: true,
         logo_url: true,
+        address: true,
+        hours: true,
       },
     },
   });

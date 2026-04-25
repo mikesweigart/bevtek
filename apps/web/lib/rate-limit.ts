@@ -55,7 +55,8 @@ type LimiterName =
   | "photo-submit"
   | "inventory-enrich"
   | "stripe-checkout"
-  | "account-export";
+  | "account-export"
+  | "sms-send";
 
 const CONFIG: Record<LimiterName, { perMinute: number; perDay: number }> = {
   // Public shopper-facing Gabby. A chatty shopper in a store might do
@@ -88,6 +89,13 @@ const CONFIG: Record<LimiterName, { perMinute: number; perDay: number }> = {
   // for scraping a user's full history repeatedly. Users rarely need more
   // than 1-2 exports ever.
   "account-export":   { perMinute: 2,   perDay: 10 },
+  // Outbound SMS via Sendblue. Each message costs real money (~$0.01-0.02
+  // per send after A2P approval). Per-user cap means a compromised staff
+  // account can't drain the SMS budget overnight. Per-minute cap is
+  // generous enough for legitimate bursts (e.g. notifying a queue of
+  // hold-pickup customers after restock). Bucket is per-user, not
+  // per-store, so 5 staff members = 5x the ceiling naturally.
+  "sms-send":         { perMinute: 20,  perDay: 200 },
 };
 
 const limiters = new Map<string, Ratelimit>();

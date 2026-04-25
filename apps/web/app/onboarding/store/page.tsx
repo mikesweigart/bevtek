@@ -15,7 +15,10 @@ export default async function StoreOnboardingPage() {
     .eq("id", auth.user.id)
     .maybeSingle();
 
-  if (profile?.store_id) redirect("/onboarding/logo");
+  // User already has a store — skip ahead to the "add more locations?"
+  // step instead of jumping straight to branding. They can continue from
+  // there if they're single-location.
+  if (profile?.store_id) redirect("/onboarding/locations");
 
   return (
     <div>

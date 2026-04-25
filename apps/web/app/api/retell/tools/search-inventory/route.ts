@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { extractKeywords } from "@/lib/gabby/keywords";
+import { buildKeywordClauses } from "@/lib/gabby/inventorySearch";
 
 // Retell Conversation Flow tool endpoint. Wired up as a "custom function"
 // node in the flow — called when Gabby needs to look up what the store
@@ -76,25 +78,10 @@ type InventoryItem = {
 };
 
 // ------------------------------------------------------------
-// Keyword extraction — same stop-word set as Gabby web chat so voice
-// results line up with chat results for the same phrase.
+// Keyword extraction + ilike clause building live in lib/gabby/* and are
+// shared with the web chat route so voice and chat stay in lockstep on
+// stop-words, column set, and keyword caps.
 // ------------------------------------------------------------
-const STOP_WORDS = new Set([
-  "the", "and", "for", "with", "what", "how", "can", "you", "like",
-  "want", "need", "good", "best", "have", "does", "would", "should",
-  "about", "that", "this", "from", "something", "looking", "recommend",
-  "suggest", "help", "tonight", "today", "any", "got", "your", "mine",
-  "please", "thanks", "yeah", "yes", "sure", "okay",
-]);
-
-function extractKeywords(query: string): string[] {
-  return query
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && w.length <= 25 && !STOP_WORDS.has(w))
-    .slice(0, 6);
-}
 
 // ------------------------------------------------------------
 // Store resolution: to_number → stores.retell_phone_number → id
@@ -196,18 +183,8 @@ export async function POST(req: Request) {
 
   let rows: Row[] = [];
 
-  if (keywords.length > 0) {
-    const clauses = keywords
-      .flatMap((k) => [
-        `name.ilike.%${k}%`,
-        `brand.ilike.%${k}%`,
-        `varietal.ilike.%${k}%`,
-        `category.ilike.%${k}%`,
-        `tasting_notes.ilike.%${k}%`,
-        `summary_for_customer.ilike.%${k}%`,
-      ])
-      .join(",");
-
+  const clauses = buildKeywordClauses(keywords);
+  if (clauses) {
     const { data, error } = await baseQuery()
       .or(clauses)
       .order("stock_qty", { ascending: false })

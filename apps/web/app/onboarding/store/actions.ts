@@ -32,7 +32,18 @@ export async function createStoreAction(
   const phone = String(formData.get("phone") ?? "").trim();
   const tz = formData.get("timezone");
 
+  // Address is optional at onboarding — we collect it here so we have it
+  // when Stripe tax / the Shopper landing page need it, but the owner can
+  // skip all five fields and finish later in Settings.
+  const addressLine1 = String(formData.get("address_line_1") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const region = String(formData.get("region") ?? "").trim().toUpperCase();
+  const postalCode = String(formData.get("postal_code") ?? "").trim();
+
   if (!storeName) return { error: "Store name is required." };
+  if (region && !/^[A-Z]{2,3}$/.test(region)) {
+    return { error: "State should be a 2–3 letter code (e.g. GA, CA)." };
+  }
 
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -46,6 +57,30 @@ export async function createStoreAction(
   });
 
   if (error) return { error: error.message };
+
+  // After the bootstrap RPC we're now the owner of a freshly-created store,
+  // so RLS lets us UPDATE it. Only write when at least one address field was
+  // provided — no point sending an all-null patch. We intentionally don't
+  // fail onboarding if this update errors; address can be filled in later.
+  if (addressLine1 || city || region || postalCode) {
+    const { data: me } = await supabase
+      .from("users")
+      .select("store_id")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+    const storeId = (me as { store_id?: string } | null)?.store_id;
+    if (storeId) {
+      await supabase
+        .from("stores")
+        .update({
+          address_line_1: addressLine1 || null,
+          city: city || null,
+          region: region || null,
+          postal_code: postalCode || null,
+        })
+        .eq("id", storeId);
+    }
+  }
 
   // Best-effort welcome email (don't block onboarding if it fails).
   try {
@@ -69,5 +104,5 @@ export async function createStoreAction(
     // swallow
   }
 
-  redirect("/onboarding/logo");
+  redirect("/onboarding/locations");
 }

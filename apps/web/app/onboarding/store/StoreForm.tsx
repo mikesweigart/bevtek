@@ -18,7 +18,8 @@ export function StoreForm() {
           Set up your store
         </h1>
         <p className="text-sm text-[color:var(--color-muted)]">
-          One quick step — then you&apos;re in.
+          One quick step — then you&apos;re in. You can edit anything later
+          in Settings.
         </p>
       </div>
 
@@ -46,6 +47,53 @@ export function StoreForm() {
           className={inputCls}
         />
       </label>
+
+      <div className="space-y-3 rounded-md border border-dashed border-[color:var(--color-border)] p-4">
+        <div>
+          <p className="text-xs font-semibold tracking-widest uppercase text-[color:var(--color-muted)]">
+            Address
+          </p>
+          <p className="text-xs text-[color:var(--color-muted)]">
+            Optional. Needed later for sales tax and the Shopper app — you
+            can add it in Settings whenever you&apos;re ready.
+          </p>
+        </div>
+        <label className="block space-y-1">
+          <span className="text-xs text-[color:var(--color-muted)]">
+            Street address
+          </span>
+          <input
+            name="address_line_1"
+            placeholder="123 Main St"
+            className={inputCls}
+          />
+        </label>
+        <div className="grid sm:grid-cols-3 gap-2">
+          <label className="block space-y-1 sm:col-span-2">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              City
+            </span>
+            <input name="city" className={inputCls} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs text-[color:var(--color-muted)]">
+              State
+            </span>
+            <input
+              name="region"
+              placeholder="GA"
+              maxLength={3}
+              className={`${inputCls} uppercase`}
+            />
+          </label>
+        </div>
+        <label className="block space-y-1">
+          <span className="text-xs text-[color:var(--color-muted)]">
+            ZIP
+          </span>
+          <input name="postal_code" className={inputCls} />
+        </label>
+      </div>
 
       <label className="block space-y-1.5">
         <span className="text-sm font-medium">Timezone</span>

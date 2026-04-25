@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { chatWithGabby, isAIConfigured, type ChatMessage, type FeaturedForAI } from "@/lib/ai/claude";
 import { fetchActivePromotions } from "@/lib/promotions/fetch";
 import { checkRate, identifyRequest, rateLimitResponse } from "@/lib/rate-limit";
+import { extractKeywords } from "@/lib/gabby/keywords";
+import { buildKeywordClauses } from "@/lib/gabby/inventorySearch";
 
 export const runtime = "nodejs";
 
@@ -81,25 +83,16 @@ export async function POST(req: Request) {
     return json({ error: "store not found", messages: history }, { status: 400 });
   }
 
-  // Keyword search across the conversation to surface inventory for Gabby
-  const searchTerms = messages
-    .filter((m) => m.role === "user")
-    .map((m) => m.content)
-    .join(" ")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 3)
-    .filter(
-      (w) =>
-        ![
-          "the", "and", "for", "with", "what", "how", "can", "you", "like",
-          "want", "need", "good", "best", "have", "does", "would", "should",
-          "about", "that", "this", "from", "something", "looking", "recommend",
-          "suggest", "help", "tonight", "today",
-        ].includes(w),
-    )
-    .slice(0, 6);
+  // Keyword search across the conversation to surface inventory for Gabby.
+  // Keyword extraction + ilike clauses live in lib/gabby/* so the voice
+  // tool (/api/retell/tools/search-inventory) stays in lockstep — same
+  // stop-words, same column set, same cap.
+  const searchTerms = extractKeywords(
+    messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join(" "),
+  );
 
   type Product = {
     name: string;
@@ -129,23 +122,12 @@ export async function POST(req: Request) {
       .eq("store_id", storeId)
       .gt("stock_qty", 0);
 
-  if (searchTerms.length > 0) {
-    // Include tasting_notes + summary_for_customer so flavor-profile and
-    // pairing asks ("smoky", "pairs with salmon", "light bodied") can
-    // actually match products whose names don't contain those words.
-    // Gabby's system prompt already knows to quote tasting notes; this
-    // is what gets those products INTO her context in the first place.
-    const clauses = searchTerms
-      .flatMap((k) => [
-        `name.ilike.%${k}%`,
-        `brand.ilike.%${k}%`,
-        `varietal.ilike.%${k}%`,
-        `category.ilike.%${k}%`,
-        `tasting_notes.ilike.%${k}%`,
-        `summary_for_customer.ilike.%${k}%`,
-      ])
-      .join(",");
-
+  const clauses = buildKeywordClauses(searchTerms);
+  if (clauses) {
+    // Column set (name/brand/varietal/category/tasting_notes/summary_for_customer)
+    // is defined in lib/gabby/inventorySearch.ts — see that file before
+    // changing. Needed so flavor/pairing asks ("smoky", "pairs with salmon")
+    // surface products whose NAMES don't carry those words.
     const { data } = await baseQuery()
       .or(clauses)
       .order("stock_qty", { ascending: false })

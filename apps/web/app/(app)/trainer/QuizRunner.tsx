@@ -13,6 +13,16 @@ type Question = {
   explanation: string | null;
 };
 
+// Local (client-computed) grade, shown on the preview screen before the
+// employee commits the attempt. Lets them retake without recording a low
+// score. Server-authoritative grading (including stars-new, which depends
+// on prior attempts) comes back from `submitQuizAttemptAction`.
+type PreviewResult = {
+  correct: number;
+  total: number;
+  passed: boolean;
+};
+
 export function QuizRunner({
   moduleId,
   moduleTitle,
@@ -28,6 +38,9 @@ export function QuizRunner({
   const [revealed, setRevealed] = useState<boolean[]>(
     Array(questions.length).fill(false),
   );
+  // Three phases: answering (both preview & result null) → preview set →
+  // result set. `retake()` resets everything back to answering.
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
 
@@ -45,8 +58,22 @@ export function QuizRunner({
     });
   }
 
-  async function submit() {
+  // Grade locally — no backend call yet. The employee sees their score on
+  // the preview screen and chooses Submit or Retake.
+  function finishAndPreview() {
     if (selected.some((s) => s === null)) return;
+    const correct = questions.reduce(
+      (n, q, i) => n + (selected[i] === q.correct_index ? 1 : 0),
+      0,
+    );
+    const total = questions.length;
+    setPreview({ correct, total, passed: correct === total });
+  }
+
+  // Commit the attempt. Server recomputes the score (don't trust the
+  // client's) and returns stars-awarded info.
+  async function submitToRecord() {
+    if (!preview) return;
     setSubmitting(true);
     const res = await submitQuizAttemptAction(
       moduleId,
@@ -56,14 +83,16 @@ export function QuizRunner({
     setSubmitting(false);
   }
 
-  function retry() {
+  function retake() {
     setSelected(Array(questions.length).fill(null));
     setRevealed(Array(questions.length).fill(false));
+    setPreview(null);
     setResult(null);
   }
 
   const allAnswered = selected.every((s) => s !== null);
 
+  // --- FINAL RESULTS (server-recorded) ---
   if (result && !result.error) {
     return (
       <div className="space-y-6">
@@ -77,7 +106,7 @@ export function QuizRunner({
           {result.passed ? (
             <>
               <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
-                Perfect score
+                Perfect score — submitted
               </p>
               <p className="text-6xl">⭐</p>
               <h2 className="text-3xl font-semibold tracking-tight">
@@ -96,13 +125,13 @@ export function QuizRunner({
           ) : (
             <>
               <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
-                Almost there
+                Submitted
               </p>
               <h2 className="text-3xl font-semibold tracking-tight">
                 {result.correct}/{result.total} correct
               </h2>
               <p className="text-sm text-[color:var(--color-muted)]">
-                Review the material and try again — you need a perfect score to
+                Review the material and retake — you need a perfect score to
                 earn stars.
               </p>
             </>
@@ -111,10 +140,10 @@ export function QuizRunner({
 
         <div className="flex items-center gap-3">
           <button
-            onClick={retry}
+            onClick={retake}
             className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold"
           >
-            Try again
+            Retake quiz
           </button>
           <Link
             href="/trainer"
@@ -127,6 +156,54 @@ export function QuizRunner({
     );
   }
 
+  // --- PREVIEW (local grading, not yet saved) ---
+  if (preview) {
+    return (
+      <div className="space-y-6">
+        <div
+          className={`rounded-2xl p-8 text-center space-y-4 ${
+            preview.passed
+              ? "bg-gradient-to-br from-[#FBF7F0] to-[#EED9B8] border-2 border-[color:var(--color-gold)]"
+              : "border border-[color:var(--color-border)]"
+          }`}
+        >
+          <p className="text-xs tracking-widest uppercase text-[color:var(--color-muted)]">
+            {preview.passed ? "Preview — perfect score" : "Preview"}
+          </p>
+          {preview.passed && <p className="text-6xl">⭐</p>}
+          <h2 className="text-3xl font-semibold tracking-tight">
+            {preview.correct}/{preview.total} correct
+          </h2>
+          <p className="text-sm text-[color:var(--color-muted)]">
+            Nothing saved yet. Submit to record this attempt, or retake for a
+            better score.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={submitToRecord}
+            disabled={submitting}
+            className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Submitting…" : "Submit results"}
+          </button>
+          <button
+            onClick={retake}
+            disabled={submitting}
+            className="rounded-md border border-[color:var(--color-border)] px-5 py-2.5 text-sm font-medium hover:border-[color:var(--color-fg)] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Retake quiz
+          </button>
+        </div>
+        {result?.error && (
+          <p className="text-sm text-red-600">{result.error}</p>
+        )}
+      </div>
+    );
+  }
+
+  // --- QUIZ-TAKING ---
   return (
     <div className="space-y-8">
       <div>
@@ -193,17 +270,13 @@ export function QuizRunner({
 
       <div className="flex items-center gap-3">
         <button
-          onClick={submit}
-          disabled={!allAnswered || submitting}
+          onClick={finishAndPreview}
+          disabled={!allAnswered}
           className="rounded-md bg-[color:var(--color-gold)] hover:bg-[color:var(--color-gold-hover)] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {submitting ? "Submitting…" : "Submit quiz"}
+          See my score
         </button>
-        {result?.error && (
-          <p className="text-sm text-red-600">{result.error}</p>
-        )}
       </div>
     </div>
   );
-
 }
